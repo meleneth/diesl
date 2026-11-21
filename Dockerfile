@@ -12,6 +12,8 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY browser/Gemfile ./browser/Gemfile
 RUN cd browser && bundle install
+# Pin and exercise the extracted Carbn gem in the actual Ruby 4.0.10 builder.
+RUN cd browser && bundle exec ruby -rcarbn -e 'g = Carbn::Graph.define { state :count, initial: 1; derive(:double, from: [:count]) { |n| n * 2 }; region :view, depends_on: [:double] }; s = Carbn::Store.new(g); seen = []; s.subscribe { |regions, _| seen << regions }; s.set(:count, 2); raise "Carbn integration failed" unless s.get(:double) == 4 && seen == [[:view]]'
 ARG RETROUI_REF=d9ab51ba6ed8a38333f12e498a2566dc45e860b4
 RUN git clone --no-checkout https://github.com/meleneth/retroui-rails.git /opt/retroui-rails \
  && cd /opt/retroui-rails && git checkout --detach "${RETROUI_REF}"
