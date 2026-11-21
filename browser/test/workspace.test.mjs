@@ -66,7 +66,7 @@ function stub() {
   const make = (policy = manifest()) => createWorkspaceController(policy, {
     FileSystem: class {constructor() {return filesystem;}}, git, documentRef
   });
-  return {filesystem, history, added, make, setMatrix: rows => {matrix = rows;}};
+  return {filesystem, history, added, make, setMatrix: rows => {matrix = rows; history.push("fixture baseline");}};
 }
 
 test("workspace policy rejects source traversal and generated overlap", () => {
