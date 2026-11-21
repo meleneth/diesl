@@ -49,7 +49,8 @@ function stub() {
   let matrix = [];
   const git = {
     init: async () => {filesystem.nodes.set("/workspace/.git", null);},
-    resolveRef: async () => {if (!history.length) throw new Error("Could not resolve HEAD"); return "abcd";},
+    resolveRef: async () => {if (!history.length) throw Object.assign(new Error("Could not find refs/heads/main."), {code: "NotFoundError"}); return "abcd";},
+    listFiles: async () => added,
     add: async ({filepath}) => {added.push(filepath);},
     commit: async options => {history.push(options.message);},
     statusMatrix: async () => matrix,
@@ -86,7 +87,7 @@ test("valid and invalid drafts persist independently from last valid source", as
   await second.initialize();
   assert.equal(second.bootstrapSource, "ship 'Rocinante', crew:");
   assert.equal(second.bootstrapValidSource, "ship 'Rocinante', crew: 4");
-  assert.equal(history.length, 1);
+  assert.equal(history.length, 0);
   assert.ok(filesystem.nodes.has("/workspace/.git"));
 });
 
@@ -101,13 +102,13 @@ test("only declared generated roots can be persisted", async () => {
   assert.equal(filesystem.nodes.has("/workspace/generate/hello.txt"), false);
 });
 
-test("replaying persisted initial content does not create extra commits", async () => {
+test("saving source never automatically creates a Git commit", async () => {
   const {history, make} = stub();
   const workspace = make();
   await workspace.initialize();
   await workspace.persistSource("fleet do\nend\n", true);
   await workspace.persistSource("fleet do\nend\n", true);
-  assert.equal(history.length, 1);
+  assert.equal(history.length, 0);
 });
 
 test("constellation stages only the declared source file", async () => {
@@ -146,4 +147,14 @@ test("workspace flushes via fs.promises, never the callback-only fs.flush", asyn
   await workspace.initialize();
   await workspace.persistSource("fleet do\nend\n", true);
   assert.ok(filesystem.flushes > 0);
+});
+
+test("new repository status and staging work before the first commit", async () => {
+  const {make, added, history} = stub();
+  const workspace = make();
+  await workspace.initialize();
+  await workspace.persistSource("fleet do\nend\n", true);
+  await workspace.stage();
+  assert.deepEqual(added, ["fleet.rb"]);
+  assert.equal(history.length, 0);
 });
