@@ -22,6 +22,7 @@ COPY examples ./examples
 COPY browser ./browser
 COPY --from=ruby_runtime /runtime/ruby+stdlib.wasm ./browser/runtime/ruby+stdlib.wasm
 COPY --from=ruby_runtime /runtime/runtime.json ./browser/runtime/runtime.json
+RUN node --experimental-default-type=module --test browser/test/workspace.test.mjs
 RUN RETROUI_SOURCE=/opt/retroui-rails bash browser/scripts/build
 
 FROM nginx:1.30.6-trixie
