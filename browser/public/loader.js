@@ -1,3 +1,5 @@
+import { Directory, File } from "/vendor/wasi/index.js";
+
 async function loadApplication(config) {
   const timings = {};
   const manifestStarted = performance.now();
