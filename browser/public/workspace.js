@@ -112,6 +112,30 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     const dirty = matrix.filter(([,head,worktree,stage]) => !(head === 1 && worktree === 1 && stage === 1));
     const status = documentRef.getElementById("workspace-status");
     if (status) { status.className = "muted"; status.textContent = dirty.length ? dirty.length + " changed workspace files" : "Git working tree clean"; }
+    const policyList = documentRef.getElementById("workspace-policy-paths");
+    if (policyList) {
+      policyList.replaceChildren();
+      for (const path of stageRoots()) {
+        const item = documentRef.createElement("li");
+        item.textContent = path + (policy.generated.some(entry => entry.path === path) ? "/ (generated subtree)" : " (source)");
+        policyList.append(item);
+      }
+    }
+    const stagedList = documentRef.getElementById("workspace-staged-paths");
+    if (stagedList) {
+      stagedList.replaceChildren();
+      const staged = matrix.filter(([,head,,stage]) => head !== stage);
+      for (const [path] of staged) {
+        const item = documentRef.createElement("li");
+        item.textContent = path;
+        stagedList.append(item);
+      }
+      if (staged.length === 0) {
+        const item = documentRef.createElement("li");
+        item.textContent = "(nothing staged)";
+        stagedList.append(item);
+      }
+    }
     const history = documentRef.getElementById("workspace-history");
     if (!history) return;
     const log = await git.log({fs, dir, depth: 10}).catch(e => {
