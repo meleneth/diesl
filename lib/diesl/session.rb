@@ -63,6 +63,20 @@ module Diesl
       transition(changed_source, label: "Edit #{entity}.#{field}")
     end
 
+    def create(entity:, name:, expected_revision:)
+      raise Conflict, "Resolve invalid source before creating" unless draft_valid?
+      raise Conflict, "Source revision changed" unless expected_revision == revision
+      end_source_edit
+      transition(schema.create(source, entity:, name:, expected_revision:), label: "Create #{entity}")
+    end
+
+    def remove(entity:, id:, expected_revision:)
+      raise Conflict, "Resolve invalid source before deleting" unless draft_valid?
+      raise Conflict, "Source revision changed" unless expected_revision == revision
+      end_source_edit
+      transition(schema.remove(source, entity:, id:, expected_revision:), label: "Remove #{entity}")
+    end
+
     def undo
       end_source_edit
       unless draft_valid?
