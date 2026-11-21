@@ -211,9 +211,26 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
       return enqueue(async () => {
         if (!policy.git) throw new Error("Git not enabled");
         const matrix = await git.statusMatrix({fs, dir});
-        for (const [path,,worktree] of matrix) {
+        const selected = matrix.filter(([path]) => allowed(path));
+        for (const [path,,worktree] of selected) {
           if (worktree === 0) await git.remove({fs, dir, filepath: path});
           else await git.add({fs, dir, filepath: path});
+        }
+        if (stageKinds.includes("generated")) {
+          for (const root of policy.generated.map(item => item.path)) {
+            const walk = async relative => {
+              if (!await exists(absolute(relative))) return;
+              const stat = await pfs.stat(absolute(relative));
+              if (stat.isDirectory()) {
+                for (const child of await pfs.readdir(absolute(relative))) {
+                  await walk(relative + "/" + child);
+                }
+              } else if (!selected.some(([path]) => path === relative)) {
+                await git.add({fs, dir, filepath: relative});
+              }
+            };
+            await walk(root);
+          }
         }
         await flush(); await refreshView();
       });
@@ -223,6 +240,9 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
         if (!policy.git) throw new Error("Git not enabled");
         if (!message.trim()) throw new Error("Commit message required");
         const matrix = await git.statusMatrix({fs, dir});
+        const outside = matrix.filter(([path,head,,stage]) => head !== stage && !allowed(path));
+        if (outside.length) throw new Error("Files outside Git staging policy: " +
+          outside.map(([path]) => path).join(", "));
         if (!matrix.some(([,head,,stage]) => head !== stage)) throw new Error("Nothing staged");
         await git.commit({fs, dir, message: message.trim(), author: policy.git.author});
         await flush(); await refreshView();
