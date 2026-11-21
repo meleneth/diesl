@@ -8,7 +8,7 @@ module DieslPlayground
     FORMAT = "diesl-browser-application"
     VERSION = 1
     BLOCK_SIZE = 512
-    MAX_FILES = 2_048
+    MAX_FILES = 8_192
     MAX_FILE_SIZE = 16 * 1024 * 1024
     MAX_ARCHIVE_SIZE = 64 * 1024 * 1024
 
@@ -83,7 +83,7 @@ module DieslPlayground
 
         [safe_path, content]
       end
-      raise ArgumentError, "Application artifact has too many files" if files.length > MAX_FILES
+      raise ArgumentError, "Application artifact has #{files.length} files; maximum #{MAX_FILES}" if files.length > MAX_FILES
       raise ArgumentError, "Application artifact is empty" if files.empty?
 
       @load_paths.each do |load_path|
