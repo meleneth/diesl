@@ -11,8 +11,10 @@ const manifest = () => ({
 
 class FakeFS {
   constructor() {
+    this.flushes = 0;
     this.nodes = new Map([["/", null]]);
     this.promises = {
+      flush: async () => {this.flushes += 1;},
       stat: async path => {
         if (!this.nodes.has(path)) throw Object.assign(new Error("not found"), {code: "ENOENT"});
         return {isDirectory: () => this.nodes.get(path) === null};
@@ -37,7 +39,7 @@ class FakeFS {
       }
     };
   }
-  async flush() {}
+  flush() { throw new Error("Callback-based fs.flush must never be called"); }
 }
 
 function stub() {
@@ -136,4 +138,12 @@ test("invalid staging policy fails before browser initialization", () => {
   policy.git.stage = ["everything"];
   const {make} = stub();
   assert.throws(() => make(policy), /staging requires explicit/);
+});
+
+test("workspace flushes via fs.promises, never the callback-only fs.flush", async () => {
+  const {filesystem, make} = stub();
+  const workspace = make();
+  await workspace.initialize();
+  await workspace.persistSource("fleet do\nend\n", true);
+  assert.ok(filesystem.flushes > 0);
 });
