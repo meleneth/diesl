@@ -5,7 +5,7 @@ require "diesl"
 RSpec.describe Diesl::Workspace do
   let(:codec) do
     Class.new do
-      def self.entries(*) = []
+      def self.unpack(*) = []
       def self.replace(*) = ""
     end
   end
