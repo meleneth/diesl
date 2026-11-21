@@ -10,12 +10,14 @@ RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
  && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY browser/Gemfile ./browser/Gemfile
+COPY browser/Gemfile browser/Gemfile.native ./browser/
 RUN cd browser && bundle install
 # Pin and exercise the extracted Carbn gem in the actual Ruby 4.0.10 builder.
 RUN cd browser && bundle exec ruby -rcarbn -e 'g = Carbn::Graph.define { state :count, initial: 1; derive(:double, from: [:count]) { |n| n * 2 }; region :view, depends_on: [:double] }; s = Carbn::Store.new(g); seen = []; s.subscribe { |regions, _| seen << regions }; s.set(:count, 2); raise "Carbn integration failed" unless s.get(:double) == 4 && seen == [[:view]]'
-# Test the real ActionView/ViewComponent adapter (not a mock renderer).
-RUN cd browser && bundle exec ruby -rcarbn -raction_view -rrails/version -rview_component -e 'klass = Class.new(ViewComponent::Base) { def call = helpers.content_tag(:strong, "Carbn") }; html = Carbn::ViewComponentRenderer.new.render(klass.new); raise "Carbn ViewComponent render mismatch: #{html}" unless html.include?("<strong>Carbn</strong>")'
+# Native ViewComponent checks must not activate the WASM-only json_pure gem.
+COPY browser/scripts/verify_native_view_component.rb ./browser/scripts/verify_native_view_component.rb
+RUN cd browser && BUNDLE_GEMFILE=/build/browser/Gemfile.native bundle install
+RUN cd browser && BUNDLE_GEMFILE=/build/browser/Gemfile.native bundle exec ruby scripts/verify_native_view_component.rb
 ARG RETROUI_REF=d9ab51ba6ed8a38333f12e498a2566dc45e860b4
 RUN git clone --no-checkout https://github.com/meleneth/retroui-rails.git /opt/retroui-rails \
  && cd /opt/retroui-rails && git checkout --detach "${RETROUI_REF}"

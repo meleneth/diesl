@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+source "https://rubygems.org"
+ruby "4.0.10"
+
+# Native Ruby smoke test: do not activate the WASM-only json_pure workaround.
+# The browser runtime keeps its own separately staged pure-Ruby JSON backend.
+gem "view_component", "4.5.0"
+gem "actionview", "8.1.4.1"
+gem "railties", "8.1.4.1"
+gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "467477e2e0d78e65e82ebc855a69f860f186621e"
