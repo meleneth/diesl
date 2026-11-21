@@ -16,11 +16,13 @@ module DieslBrowser
       @document = JS.global[:document]
       @document.call(:querySelector, "#app")[:innerHTML] = shell
       render_regions
-      change_handler = proc { |event| change(event) }
+      input_handler = proc { |event| handle_input(event) }
+      change_handler = proc { |event| handle_change(event) }
       click_handler = proc { |event| click(event) }
+      @document.addEventListener("input", &input_handler)
       @document.addEventListener("change", &change_handler)
       @document.addEventListener("click", &click_handler)
-      @handlers.concat([change_handler, click_handler])
+      @handlers.concat([input_handler, change_handler, click_handler])
     end
 
     private
@@ -70,18 +72,50 @@ module DieslBrowser
       target("diagnostics")[:innerHTML] = status + %(<p class="muted">revision #{escape(@session.revision[0, 12])}</p>)
     end
 
-    def change(event)
+    # Text inputs are semantic edits on every keystroke. Do not replace the
+    # inspector DOM during input: doing so destroys focus, cursor position,
+    # selection and IME composition. Only the source and status regions change.
+    def handle_input(event)
+      return if event[:isComposing].to_s == "true"
+
       element = event[:target]
       if element[:id].to_s == "dsl-source"
-        @session = Diesl::Session.new(schema: EDITOR, source: element[:value].to_s)
+        source = element[:value].to_s
+        Diesl::Source.new(source).then do |document|
+          raise Diesl::InvalidSource, document.errors.join("\\n") unless document.valid?
+        end
+        session = Diesl::Session.new(schema: EDITOR, source:)
+        session.records # validate against editor schema before adopting
+        @session = session
         @error = nil
         render_inspector
         render_status
         return
       end
+
+      return unless element[:tagName].to_s == "INPUT"
+
+      edit_field(element)
+    rescue ArgumentError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
+      @error = "#{error.class}: #{error.message}"
+      render_status
+    end
+
+    # Select controls fire change rather than per-keystroke input edits.
+    # Text controls are already up to date by the time change fires.
+    def handle_change(event)
+      element = event[:target]
+      edit_field(element) if element[:tagName].to_s == "SELECT"
+    rescue ArgumentError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
+      @error = "#{error.class}: #{error.message}"
+      render_status
+    end
+
+    def edit_field(element)
       data = element[:dataset]
       entity = data[:entity].to_s
       return if entity.empty?
+
       field = data[:field].to_s
       value = element[:value].to_s
       typed = case data[:type].to_s
@@ -93,10 +127,26 @@ module DieslBrowser
       @session.change(entity: entity.to_sym, id: data[:id].to_s, field: field.to_sym,
         value: typed, expected_revision: @session.revision)
       @error = nil
-      render_regions
-    rescue ArgumentError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
-      @error = "#{error.class}: #{error.message}"
+      render_source
+      sync_record_offsets
       render_status
+    end
+
+    # Prism IDs are byte offsets. Editing an earlier declaration moves later
+    # declarations, so keep every existing form's data-id current in place.
+    # This avoids rebuilding the active input on every keypress.
+    def sync_record_offsets
+      records = @session.records
+      elements = @document.call(:querySelectorAll, ".record")
+      return unless elements[:length].to_i == records.length
+
+      records.each_with_index do |record, index|
+        container = elements.call(:item, index)
+        inputs = container.call(:querySelectorAll, "[data-id]")
+        inputs[:length].to_i.times do |field_index|
+          inputs.call(:item, field_index)[:dataset][:id] = record.id
+        end
+      end
     end
 
     def click(event)
