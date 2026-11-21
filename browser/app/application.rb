@@ -114,6 +114,7 @@ module DieslBrowser
       end
 
       return unless element[:tagName].to_s == "INPUT"
+      return if %w[create-name workspace-message].include?(element[:id].to_s)
 
       edit_field(element)
     rescue ArgumentError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
