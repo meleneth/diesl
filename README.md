@@ -2,7 +2,7 @@
 
 A standalone Ruby DSL authoring core extracted from Mobilis's browser editor.
 
-**Ruby 4.0.10 exclusively.** The required runtime version is pinned in `.ruby-version`, `Gemfile`, `diesl.gemspec`, and CI. Older and newer interpreters are unsupported. There is no compatibility matrix.
+**Ruby 4.0.10 exclusively.** The required runtime version is pinned in `.ruby-version`, `Gemfile`, `diesl.gemspec`, and the Docker runtime metadata gate. GitHub CI is temporarily disabled. Older and newer interpreters are unsupported. There is no compatibility matrix.
 
 Diesl is **not** a service generator, a Rails integration, or a second source of truth. It provides conservative Prism-located source edits, optimistic revision checks, and structured undo/redo. The caller owns DSL interpretation, schema, rendering, and persistence.
 
@@ -31,3 +31,18 @@ Run `bundle install && bundle exec rspec spec` with Ruby 4.0.10.
 - Next step: extract generic schema adapters, virtual-document editing and browser workspace functionality. Mobilis integration will happen through an adapter later; no Mobilis changes are required for initial Diesl development.
 
 Diesl is independent of Mobilis. No Rails or Docker image changes belong to this extraction.
+
+## Browser smoke test (Docker Compose)
+
+Diesl reuses the **existing** custom Mobilis Ruby 4.0.10 WASM runtime artifact. From a clone of Diesl:
+
+```sh
+docker image inspect mobilis-playground-ruby-runtime:2.10.1-ruby-4.0.10-rails-8.1.4.1
+docker compose up --build
+```
+
+Open [http://localhost:8080](http://localhost:8080). Edit the Rocinante crew number in the generated inspector, then confirm the source DSL updates surgically. Try undo/redo and a raw-source change. Run `docker compose logs -f playground` if the build fails, and inspect the red boot error message in the browser for runtime errors.
+
+The smoke UI is **Ruby-owned** and runs from the WASM `js` event bridge. It is **not yet ViewComponent rendering**: the compatibility probe from Mobilis is an existing gate for that part of the work. See [Docker setup and limitations](docs/docker.md).
+
+If the runtime artifact image is missing, return to the Mobilis checkout and use `bin/build-playground-runtime` once; do not rebuild its native dependencies from Diesl. The container will not download or substitute another Ruby version.
