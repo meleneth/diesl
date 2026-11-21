@@ -101,7 +101,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
   // isomorphic-git statusMatrix requires a commit in that branch, so build the
   // equivalent initial matrix from the worktree and index until first commit.
   function missingHead(error) {
-    return error?.code === "NotFoundError" &&
+    return (error?.code === "NotFoundError" || error?.name === "NotFoundError") &&
       /refs\/heads\//.test(String(error.message));
   }
   async function unborn() {
