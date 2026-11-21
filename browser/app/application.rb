@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../../examples/constellation/editor"
+require "editor"
 
 module DieslBrowser
   # Temporary Ruby/WASM interaction smoke UI until the real ViewComponent gate
