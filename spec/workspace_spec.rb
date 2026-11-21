@@ -17,7 +17,7 @@ RSpec.describe Diesl::Workspace do
         root "/workspace"
         source "mobilis.rb", last_valid: ".mobilis/last-valid.rb"
         storage :browser
-        git branch: "main", author_name: "Mobilis", author_email: "mobilis@example.test"
+        git branch: "main", author_name: "Mobilis", author_email: "mobilis@example.test", stage: [:generated]
         generated "generate"
         embedded :embedded_archive, codec: codec_class
       end
@@ -29,6 +29,7 @@ RSpec.describe Diesl::Workspace do
     manifest = editor.workspace.manifest
     expect(manifest[:source]).to eq(path: "mobilis.rb", last_valid: ".mobilis/last-valid.rb")
     expect(manifest[:git][:branch]).to eq("main")
+    expect(manifest[:git][:stage]).to eq(["generated"])
     expect(manifest[:generated]).to eq([{path: "generate"}])
     expect(manifest[:embedded]).to eq([{call: "embedded_archive", editable: true}])
     expect(editor.workspace.embedded.first.codec).to eq(codec_class)
@@ -61,7 +62,7 @@ RSpec.describe Diesl::Workspace do
       Diesl::Editor.define do
         workspace do
           source "source.rb"
-          git branch: "../unsafe", author_name: "A", author_email: "a@example.test"
+          git branch: "../unsafe", author_name: "A", author_email: "a@example.test", stage: [:source]
         end
       end
     }.to raise_error(ArgumentError)
@@ -74,6 +75,25 @@ RSpec.describe Diesl::Workspace do
     editor = Diesl::Editor.define { workspace { source "fleet.rb" } }
     expect(editor.workspace.source.path).to eq("fleet.rb")
     expect { editor.workspace { source "other.rb" } }.to raise_error(ArgumentError, /already declared/)
+  end
+
+  it "rejects missing or incompatible staging policy" do
+    expect {
+      Diesl::Editor.define do
+        workspace do
+          source "fleet.rb"
+          git author_name: "A", author_email: "a@example.test"
+        end
+      end
+    }.to raise_error(ArgumentError)
+    expect {
+      Diesl::Editor.define do
+        workspace do
+          source "fleet.rb"
+          git author_name: "A", author_email: "a@example.test", stage: [:generated]
+        end
+      end
+    }.to raise_error(ArgumentError, /generated/)
   end
 
   it "does not require every editor to declare a workspace" do
