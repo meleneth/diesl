@@ -47,3 +47,17 @@ update = session.change(
 ## Outstanding blockers
 
 Mobilis's `view_component_compatibility/README.md` documents that real ViewComponent 4.5.0 fails under the existing WASM runtime because the ActionView sanitizer chain reaches Nokogiri without a WASI-compatible native extension. Reproduce under Ruby **4.0.10** and solve the dependency before claiming a browser demo or rendering adapter works. Neither Rails nor Turbo is an acceptable workaround.
+
+## Raw source edits and validity
+
+The browser source editor keeps every typed byte in a **draft** separate from
+the last valid `Diesl::Session#source`. Syntax-invalid drafts are visible and
+reported as invalid, but the last valid inspector projection and its fields
+remain intact. Form inputs are disabled until the source becomes valid again;
+no invalid Ruby is silently discarded or auto-corrected.
+
+Once the source becomes valid, `Session#type_source` records a structured
+history transaction, refreshes the inspector, and keeps the user's focus in
+the source textarea. Consecutive valid keystrokes are coalesced into one
+undo entry until focus leaves the source editor. The first Undo on an invalid
+draft discards only that draft; subsequent Undo steps replay committed edits.

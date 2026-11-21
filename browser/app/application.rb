@@ -18,11 +18,13 @@ module DieslBrowser
       render_regions
       input_handler = proc { |event| handle_input(event) }
       change_handler = proc { |event| handle_change(event) }
+      blur_handler = proc { |event| @session.end_source_edit if event[:target][:id].to_s == "dsl-source" }
       click_handler = proc { |event| click(event) }
       @document.addEventListener("input", &input_handler)
       @document.addEventListener("change", &change_handler)
+      @document.addEventListener("focusout", &blur_handler)
       @document.addEventListener("click", &click_handler)
-      @handlers.concat([input_handler, change_handler, click_handler])
+      @handlers.concat([input_handler, change_handler, blur_handler, click_handler])
     end
 
     private
@@ -65,11 +67,26 @@ module DieslBrowser
         %(<div class="record"><strong>#{escape(record.entity)}</strong>#{fields}</div>)
       end.join
       target("inspector-region")[:innerHTML] = html
+      sync_inspector_disabled
     end
 
     def render_status
-      status = @error ? %(<p class="error">#{escape(@error)}</p>) : '<p class="success">Ruby session ready</p>'
-      target("diagnostics")[:innerHTML] = status + %(<p class="muted">revision #{escape(@session.revision[0, 12])}</p>)
+      if @session.draft_valid?
+        status = @error ? %(<p role="status" class="error">#{escape(@error)}</p>) :
+          '<p role="status" class="success">✓ Valid Ruby DSL · editor synchronized</p>'
+      else
+        status = %(<p role="status" class="error">✕ Invalid Ruby DSL · retaining last valid form</p>) +
+          %(<pre class="error">#{escape(@session.draft_error)}</pre>)
+      end
+      target("diagnostics")[:innerHTML] = status +
+        %(<p class="muted">last valid revision #{escape(@session.revision[0, 12])}</p>)
+    end
+
+    def sync_inspector_disabled
+      controls = target("inspector-region").call(:querySelectorAll, "[data-field]")
+      controls[:length].to_i.times do |index|
+        controls.call(:item, index)[:disabled] = !@session.draft_valid?
+      end
     end
 
     # Text inputs are semantic edits on every keystroke. Do not replace the
@@ -80,15 +97,11 @@ module DieslBrowser
 
       element = event[:target]
       if element[:id].to_s == "dsl-source"
-        source = element[:value].to_s
-        Diesl::Source.new(source).then do |document|
-          raise Diesl::InvalidSource, document.errors.join("\\n") unless document.valid?
-        end
-        session = Diesl::Session.new(schema: EDITOR, source:)
-        session.records # validate against editor schema before adopting
-        @session = session
+        result = @session.type_source(element[:value].to_s,
+          expected_revision: @session.revision)
         @error = nil
-        render_inspector
+        render_inspector if result.changed
+        sync_inspector_disabled
         render_status
         return
       end
@@ -112,6 +125,8 @@ module DieslBrowser
     end
 
     def edit_field(element)
+      raise Diesl::Conflict, "Resolve the invalid source before editing the form" unless @session.draft_valid?
+
       data = element[:dataset]
       entity = data[:entity].to_s
       return if entity.empty?

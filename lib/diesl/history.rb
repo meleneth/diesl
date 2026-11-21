@@ -12,10 +12,14 @@ module Diesl
       @redo_entries = []
     end
 
-    def record(before, after, label:)
+    def record(before, after, label:, coalesce: false)
       return false if before == after
 
-      undo_entries << Entry.new(before:, after:, label:)
+      if coalesce && redo_entries.empty? && undo_entries.last&.label == label && undo_entries.last.after == before
+        undo_entries[-1] = Entry.new(before: undo_entries.last.before, after:, label:)
+      else
+        undo_entries << Entry.new(before:, after:, label:)
+      end
       redo_entries.clear
       true
     end
