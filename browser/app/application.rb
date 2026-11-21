@@ -12,6 +12,7 @@ module DieslBrowser
       stored = workspace[:hasBootstrapSource].to_s == "true" ? workspace[:bootstrapSource].to_s : nil
       previous = workspace[:bootstrapValidSource].to_s
       valid = [stored, previous, default_source].compact.find do |candidate|
+        next false if candidate.strip.empty?
         begin
           EDITOR.inspect(candidate)
           true
@@ -20,7 +21,7 @@ module DieslBrowser
         end
       end
       @session = Diesl::Session.new(schema: EDITOR, source: valid)
-      @session.type_source(stored, expected_revision: @session.revision) if stored && stored != valid
+      @session.type_source(stored, expected_revision: @session.revision) if stored && !stored.strip.empty? && stored != valid
       @handlers = []
       @error = nil
       @renderer = ComponentRenderer.new
@@ -49,6 +50,7 @@ module DieslBrowser
       '<header><h1>Diesl · Ruby 4.0.10 WASM</h1><span class="muted">Direct Ruby DOM events · no Rails server</span></header>' \
         '<p class="muted">Ruby-driven editing with real ViewComponent / RetroUI rendering.</p>' \
         '<div id="toolbar-region" class="toolbar"></div>' \
+        '<button id="restore-demo" type="button">Restore demo document</button>' \
         '<section id="workspace-region"><h2>Workspace · Git</h2><p id="workspace-status" class="muted">Initializing…</p>' \
         '<div class="toolbar"><button id="workspace-stage">Stage all</button>' \
         '<input id="workspace-message" placeholder="Commit message" aria-label="Git commit message">' \
@@ -172,8 +174,13 @@ module DieslBrowser
 
     def click(event)
       id = event[:target][:id].to_s
-      return unless %w[undo redo].include?(id)
-      @session.public_send(id)
+      return unless %w[undo redo restore-demo].include?(id)
+      if id == "restore-demo"
+        default_source = File.read("/src/examples/constellation/#{EDITOR.workspace.source.path}")
+        @session = Diesl::Session.new(schema: EDITOR, source: default_source)
+      else
+        @session.public_send(id)
+      end
       @error = nil
       render_regions
       persist_source
