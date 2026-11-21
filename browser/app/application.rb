@@ -173,13 +173,24 @@ module DieslBrowser
     end
 
     def click(event)
-      id = event[:target][:id].to_s
-      return unless %w[undo redo restore-demo].include?(id)
-      if id == "restore-demo"
+      button = event[:target].call(:closest, "button")
+      return if button.nil?
+      id = button[:id].to_s
+      if id == "create-record"
+        kind = target("create-entity")[:value].to_s
+        name = target("create-name")[:value].to_s
+        @session.create(entity: kind.to_sym, name:, expected_revision: @session.revision)
+      elsif button[:classList].call(:contains, "remove-record").to_s == "true"
+        data = button[:dataset]
+        @session.remove(entity: data[:entity].to_s.to_sym, id: data[:id].to_s,
+          expected_revision: @session.revision)
+      elsif id == "restore-demo"
         default_source = File.read("/src/examples/constellation/#{EDITOR.workspace.source.path}")
         @session = Diesl::Session.new(schema: EDITOR, source: default_source)
-      else
+      elsif %w[undo redo].include?(id)
         @session.public_send(id)
+      else
+        return
       end
       @error = nil
       render_regions
