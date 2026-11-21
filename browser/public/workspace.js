@@ -97,21 +97,50 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     queue = work.catch(errorStatus);
     return work;
   }
-  async function commitInitialSource() {
-    if (!policy.git) return;
-    try { await git.resolveRef({fs, dir, ref: "HEAD"}); return; }
-    catch (e) { if (!/not found|Could not resolve|unknown ref|ENOENT/i.test(String(e.message))) throw e; }
-    if (stageKinds.includes("source")) {
-      await git.add({fs, dir, filepath: policy.source.path});
-      await git.commit({fs, dir, message: "Initialize Diesl workspace", author: policy.git.author});
+  // A newly initialized Git repository has HEAD pointing at an unborn branch.
+  // isomorphic-git statusMatrix requires a commit in that branch, so build the
+  // equivalent initial matrix from the worktree and index until first commit.
+  function missingHead(error) {
+    return error?.code === "NotFoundError" &&
+      /refs\/heads\//.test(String(error.message));
+  }
+  async function unborn() {
+    if (!policy.git) return false;
+    try {
+      await git.resolveRef({fs, dir, ref: "HEAD"});
+      return false;
+    } catch (error) {
+      if (missingHead(error)) return true;
+      throw error;
     }
+  }
+  async function walkFiles(relative, collected) {
+    const full = absolute(relative);
+    if (!await exists(full)) return;
+    const stat = await pfs.stat(full);
+    if (stat.isDirectory()) {
+      for (const child of await pfs.readdir(full)) {
+        await walkFiles(relative + "/" + child, collected);
+      }
+    } else {
+      collected.add(relative);
+    }
+  }
+  async function statusRows() {
+    if (!await unborn()) return git.statusMatrix({fs, dir});
+    const indexed = new Set(await git.listFiles({fs, dir}));
+    const worktree = new Set();
+    for (const path of stageRoots()) await walkFiles(path, worktree);
+    return [...new Set([...worktree, ...indexed])].sort().map(path => [
+      path, 0, worktree.has(path) ? 2 : 0, indexed.has(path) ? 2 : 0
+    ]);
   }
   async function refreshView() {
     if (!attached || !policy.git) return;
-    const matrix = await git.statusMatrix({fs, dir});
+    const matrix = await statusRows();
     const dirty = matrix.filter(([,head,worktree,stage]) => !(head === 1 && worktree === 1 && stage === 1));
     const status = documentRef.getElementById("workspace-status");
-    if (status) { status.className = "muted"; status.textContent = dirty.length ? dirty.length + " changed workspace files" : "Git working tree clean"; }
+    if (status) { status.className = "muted"; status.textContent = (await unborn() ? "No commits yet · " : "") + (dirty.length ? dirty.length + " changed workspace files" : "Git working tree clean"); }
     const policyList = documentRef.getElementById("workspace-policy-paths");
     if (policyList) {
       policyList.replaceChildren();
@@ -138,10 +167,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     }
     const history = documentRef.getElementById("workspace-history");
     if (!history) return;
-    const log = await git.log({fs, dir, depth: 10}).catch(e => {
-      if (/not found|unknown ref/i.test(String(e.message))) return [];
-      throw e;
-    });
+    const log = await unborn() ? [] : await git.log({fs, dir, depth: 10});
     history.replaceChildren();
     for (const item of log) {
       const li = documentRef.createElement("li");
@@ -178,7 +204,6 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
               (existingIgnore && !existingIgnore.endsWith("\n") ? "\n" : "") + rule + "\n");
           }
         }
-        await commitInitialSource();
         await flush();
         await refreshView();
       });
@@ -235,7 +260,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     stage() {
       return enqueue(async () => {
         if (!policy.git) throw new Error("Git not enabled");
-        const matrix = await git.statusMatrix({fs, dir});
+        const matrix = await statusRows();
         const selected = matrix.filter(([path]) => allowed(path));
         for (const [path,,worktree] of selected) {
           if (worktree === 0) await git.remove({fs, dir, filepath: path});
@@ -264,7 +289,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
       return enqueue(async () => {
         if (!policy.git) throw new Error("Git not enabled");
         if (!message.trim()) throw new Error("Commit message required");
-        const matrix = await git.statusMatrix({fs, dir});
+        const matrix = await statusRows();
         const outside = matrix.filter(([path,head,,stage]) => head !== stage && !allowed(path));
         if (outside.length) throw new Error("Files outside Git staging policy: " +
           outside.map(([path]) => path).join(", "));
