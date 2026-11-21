@@ -66,3 +66,11 @@ staged; commits refuse already-staged files outside the policy.
 The workspace UI lists the policy targets separately from the exact paths
 currently in the index. A browser-side Git exception includes its stack for
 debugging rather than only a generic error message.
+
+## LightningFS flush contract
+
+Use `fs.promises.flush()`. The callback-based `fs.flush(callback)` requires
+an actual callback and otherwise raises `expected a function but got undefined`.
+The Node workspace test now deliberately rejects callback-style flush, and the
+integration test exercises isomorphic-git against the real LightningFS memory
+backend. Both tests run in the Docker builder before packaging the application.
