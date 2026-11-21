@@ -27,7 +27,7 @@ async function runCase(stage, sourcePath, expected) {
   });
   await workspace.initialize();
   await workspace.persistSource("fleet do\nend\n", true);
-  if (stage.includes("source")) await workspace.persistSource("fleet do\\n  ship \"Rocinante\"\\nend\\n", true);
+  if (stage.includes("source")) await workspace.persistSource("fleet do\n  ship \"Rocinante\"\nend\n", true);
   await workspace.persistGenerated("generate", JSON.stringify({
     "compose.yaml": btoa("services: {}\n")
   }));
