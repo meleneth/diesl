@@ -6,7 +6,7 @@ module Diesl
   # Never evaluate source or perform filesystem side effects during definition.
   class Workspace
     SourceFile = Data.define(:path, :last_valid)
-    Git = Data.define(:branch, :author_name, :author_email)
+    Git = Data.define(:branch, :author_name, :author_email, :stage)
     Embedded = Data.define(:call, :codec, :editable)
     Generated = Data.define(:path)
 
@@ -30,7 +30,7 @@ module Diesl
         root: root,
         source: {path: source.path, last_valid: source.last_valid},
         storage: storage.to_s,
-        git: git && {branch: git.branch, author: {name: git.author_name, email: git.author_email}},
+        git: git && {branch: git.branch, author: {name: git.author_name, email: git.author_email}, stage: git.stage.map(&:to_s)},
         generated: generated.map { |item| {path: item.path} },
         embedded: embedded.map { |item| {call: item.call.to_s, editable: item.editable} }
       }
@@ -67,7 +67,7 @@ module Diesl
         @storage = kind
       end
 
-      def git(branch: "main", author_name:, author_email:)
+      def git(branch: "main", author_name:, author_email:, stage:)
         raise ArgumentError, "Git already declared" if @git
         raise ArgumentError, "Invalid Git branch" unless branch.is_a?(String) &&
           branch.match?(/\A[A-Za-z0-9][A-Za-z0-9._\/-]*\z/) &&
@@ -78,8 +78,11 @@ module Diesl
             !value.strip.empty? && !value.include?("\n")
         end
 
+        raise ArgumentError, "Stage policy must be a nonempty Array" unless stage.is_a?(Array) && !stage.empty?
+        selected = stage.map(&:to_sym)
+        raise ArgumentError, "Stage policy allows :source or :generated" unless selected.all? { |kind| %i[source generated].include?(kind) } && selected.uniq == selected
         @git = Git.new(branch: branch.dup.freeze, author_name: author_name.dup.freeze,
-          author_email: author_email.dup.freeze)
+          author_email: author_email.dup.freeze, stage: selected.freeze)
       end
 
       def generated(path)
@@ -108,6 +111,8 @@ module Diesl
             raise ArgumentError, "Generated path overlaps workspace files: #{item.path}"
           end
         end
+
+        raise ArgumentError, "Cannot stage generated files without generated roots" if @git&.stage&.include?(:generated) && @generated.empty?
 
         Workspace.new(root: @root, source: @source, storage: @storage, git: @git,
           generated: @generated.dup, embedded: @embedded.dup)
