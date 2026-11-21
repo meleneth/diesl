@@ -45,13 +45,12 @@ module Diesl
     end
 
     def entities = @entities.dup.freeze
-    attr_reader :workspace
-
     # Workspace is part of the editor definition, not a second app config.
+    # With a block it declares the workspace; without a block it reads it.
     def workspace(&block)
-      raise ArgumentError, "Workspace already declared" if @workspace
-      raise ArgumentError, "Workspace needs a block" unless block
+      return @workspace unless block
 
+      raise ArgumentError, "Workspace already declared" if @workspace
       builder = Workspace::Builder.new
       builder.instance_eval(&block)
       @workspace = builder.build

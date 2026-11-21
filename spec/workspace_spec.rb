@@ -32,6 +32,7 @@ RSpec.describe Diesl::Workspace do
     expect(manifest[:generated]).to eq([{path: "generate"}])
     expect(manifest[:embedded]).to eq([{call: "embedded_archive", editable: true}])
     expect(editor.workspace.embedded.first.codec).to eq(codec_class)
+    expect(editor.workspace).to equal(editor.workspace)
     expect(editor.workspace).to be_frozen
     expect(editor.workspace.manifest).not_to have_key(:codec)
   end
@@ -67,6 +68,12 @@ RSpec.describe Diesl::Workspace do
     expect {
       Diesl::Editor.define { workspace { generated "files" } }
     }.to raise_error(ArgumentError, /source file/)
+  end
+
+  it "rejects a second workspace definition while allowing repeated reads" do
+    editor = Diesl::Editor.define { workspace { source "fleet.rb" } }
+    expect(editor.workspace.source.path).to eq("fleet.rb")
+    expect { editor.workspace { source "other.rb" } }.to raise_error(ArgumentError, /already declared/)
   end
 
   it "does not require every editor to declare a workspace" do

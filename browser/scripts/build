@@ -33,7 +33,7 @@ cp -R "$RETROUI_SOURCE/app/components/retro_ui/rails" "$staging_dir/src/retro_ui
 cp -R "$RETROUI_SOURCE/lib/retro_ui/rails" "$staging_dir/src/retro_ui/lib/retro_ui/"
 BUNDLE_GEMFILE="$PWD/browser/Gemfile" ruby browser/scripts/stage_view_gems.rb "$staging_dir"
 ruby -Ilib -r ./examples/constellation/editor -rjson -e \
-  'STDOUT.write(JSON.pretty_generate(EDITOR.workspace.manifest) + "\\n")' > browser/public/workspace-config.json
+  'STDOUT.write(JSON.pretty_generate(EDITOR.workspace.manifest) + "\n")' > browser/public/workspace-config.json
 RUBY_WASM_RUNTIME_PACKAGE="mobilis-ruby-wasm" \
 RUBY_WASM_RUNTIME_VERSION="2.10.1-ruby-4.0.10-rails-8.1.4.1" \
 ruby browser/scripts/build_application.rb "$staging_dir" browser/public
