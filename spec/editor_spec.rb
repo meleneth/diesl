@@ -50,4 +50,43 @@ RSpec.describe Diesl::Editor do
       value: 4, expected_revision: Diesl::Source.new(source).revision) }
       .to raise_error(Diesl::UnsafeEdit)
   end
+  it "creates a declaration in an empty configured container and supports source-preserving deletion" do
+    creator = described_class.define do
+      container :fleet
+      entity :ship, creatable: true do
+        field :name, type: :string, required: true
+        field :crew, type: :integer
+      end
+    end
+    source = "fleet 'Empty' do\nend\n"
+    created = creator.create(source, entity: :ship, name: "Rocinante",
+      expected_revision: Diesl::Source.new(source).revision)
+    expect(created).to eq("fleet 'Empty' do\n  ship \"Rocinante\", crew: 0\nend\n")
+    record = creator.inspect(created).first
+    expect(record.values).to eq(name: "Rocinante", crew: 0)
+    removed = creator.remove(created, entity: :ship, id: record.id,
+      expected_revision: Diesl::Source.new(created).revision)
+    expect(removed).to eq(source)
+  end
+
+  it "rejects stale creates and declarations outside an editable block" do
+    creator = described_class.define do
+      container :fleet
+      entity(:ship, creatable: true) { field :name, type: :string }
+    end
+    expect {
+      creator.create("fleet do\nend\n", entity: :ship, name: "A", expected_revision: "stale")
+    }.to raise_error(Diesl::Conflict)
+    expect {
+      creator.create("", entity: :ship, name: "A", expected_revision: Diesl::Source.new("").revision)
+    }.to raise_error(Diesl::UnsafeEdit)
+  end
+
+  it "never creates an entity that has not opted into creation" do
+    source = "fleet do\nend\n"
+    expect {
+      editor.create(source, entity: :ship, name: "A", expected_revision: Diesl::Source.new(source).revision)
+    }.to raise_error(Diesl::UnsafeEdit)
+  end
+
 end
