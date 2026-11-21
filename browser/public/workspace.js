@@ -86,7 +86,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     await mkdirp(target.slice(0, target.lastIndexOf("/")));
     if (await read(path) !== text) await pfs.writeFile(target, encoder.encode(text));
   }
-  async function flush() { if (typeof fs.flush === "function") await fs.flush(); }
+  async function flush() { if (typeof pfs.flush === "function") await pfs.flush(); }
   function errorStatus(e) {
     console.error("Diesl workspace failure", e);
     const node = documentRef.getElementById("workspace-status");
