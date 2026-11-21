@@ -28,17 +28,40 @@ module DieslBrowser
       end
 
       def call
-        helpers.safe_join(@records.map { |record| record_card(record) })
+        helpers.safe_join([creation_controls, *@records.map { |record| record_card(record) }])
       end
 
       private
+
+      def creation_controls
+        entities = @schema.entities.values.select(&:creatable)
+        return helpers.content_tag(:p, "No creatable entities declared", class: "muted") if entities.empty?
+
+        selector = render(RetroUI::Rails::SelectComponent.new(
+          options: entities.map { |entity| [entity.label, entity.name.to_s] },
+          html_options: {id: "create-entity"}
+        ))
+        name = render(RetroUI::Rails::InputComponent.new(
+          type: :text, html_options: {id: "create-name", placeholder: "Name"}
+        ))
+        action = render(RetroUI::Rails::ButtonComponent.new(
+          label: "Create", html_options: {id: "create-record"}
+        ))
+        helpers.content_tag(:div, helpers.safe_join([selector, name, action]), class: "create-controls")
+      end
 
       def record_card(record)
         definition = @schema.entities.fetch(record.entity)
         render(RetroUI::Rails::CardComponent.new(html_options: {class: "record"})) do
           helpers.safe_join([
             render(RetroUI::Rails::CardHeaderComponent.new) do
-              render(RetroUI::Rails::CardTitleComponent.new) { definition.label }
+              helpers.safe_join([
+                render(RetroUI::Rails::CardTitleComponent.new) { definition.label },
+                render(RetroUI::Rails::ButtonComponent.new(
+                  label: "Delete", variant: :destructive, size: :sm,
+                  html_options: {class: "remove-record", "data-entity": record.entity.to_s, "data-id": record.id}
+                ))
+              ])
             end,
             render(RetroUI::Rails::CardContentComponent.new) do
               helpers.safe_join(definition.fields.filter_map { |field| field_row(record, field) })
