@@ -10,7 +10,7 @@ EDITOR = Diesl::Editor.define do
     source "mobilis.rb", last_valid: ".mobilis/last-valid.rb"
     storage :browser
     git branch: "main", author_name: "Mobilis Playground",
-      author_email: "playground@mobilis.local"
+      author_email: "playground@mobilis.local", stage: [:generated]
     generated "generate"
     embedded :embedded_archive, codec: Mobilis::EmbeddedArchive
   end
@@ -53,3 +53,16 @@ API is present, but the constellation demo has no generator to call it.
 These changes have not been verified under the user's real browser runtime.
 Run the Docker build and browser smoke test before treating this as parity
 with Mobilis's existing workspace implementation.
+
+## Explicit Git policy
+
+The `git` declaration requires `stage:` with `:source`, `:generated`, or both.
+The constellation demo stages `fleet.rb` through `stage: [:source]`.
+Mobilis should use `stage: [:generated]`, so `mobilis.rb` stays as an
+uncommitted authoring input while the declared `generated "generate"` tree
+is Git-versioned. Existing files outside the policy are never implicitly
+staged; commits refuse already-staged files outside the policy.
+
+The workspace UI lists the policy targets separately from the exact paths
+currently in the index. A browser-side Git exception includes its stack for
+debugging rather than only a generic error message.
