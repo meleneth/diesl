@@ -1,6 +1,7 @@
 import { RubyVM } from "/vendor/ruby-wasm-wasi/vm.js";
 import { consolePrinter } from "/vendor/ruby-wasm-wasi/console.js";
 import { Directory, File, OpenFile, PreopenDirectory, WASI } from "/vendor/wasi/index.js";
+import { createWorkspaceController } from "/workspace.js";
 import { loadApplication, fetchJson, fetchRequired, validateRuntimeConfig, verifyBytes, hydrateFilesystem, escapeHtml } from "/loader.js";
 
 async function boot() {
@@ -26,9 +27,14 @@ async function boot() {
       addToImports: imports => printer.addToImports(imports),
       setMemory: memory => printer.setMemory(memory)
     });
+    const workspaceConfig = await fetchJson("/workspace-config.json", "workspace configuration", {cache:"no-store"});
+    const workspace = createWorkspaceController(workspaceConfig);
+    await workspace.initialize();
+    window.DieslWorkspace = workspace;
     const loadPaths = application.manifest.filesystem.load_paths.map(JSON.stringify).join(",");
     vm.eval(`$LOAD_PATH.unshift(${loadPaths}); require "boot"`);
     element.remove();
+    workspace.attach();
     window.DieslDiagnostics = {ruby:config.runtime.ruby_version, vmCount:1, loaded:true};
   } catch (error) {
     element.innerHTML = `<h2>Diesl WASM boot failed</h2><pre class="error">${escapeHtml(error.stack || String(error))}</pre>`;

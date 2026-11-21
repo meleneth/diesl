@@ -5,6 +5,10 @@ cd "$(dirname "$0")/../.."
 mkdir -p browser/public/vendor/ruby-wasm-wasi browser/public/vendor/wasi browser/public/vendor
 cp -R browser/node_modules/@ruby/wasm-wasi/dist/esm/. browser/public/vendor/ruby-wasm-wasi/
 cp -R browser/node_modules/@bjorn3/browser_wasi_shim/dist/. browser/public/vendor/wasi/
+mkdir -p browser/public/vendor/buffer browser/public/vendor/lightning-fs browser/public/vendor/isomorphic-git
+browser/node_modules/.bin/esbuild browser/assets/buffer-polyfill.js --bundle --minify --platform=browser --format=iife --outfile=browser/public/vendor/buffer/buffer.min.js
+cp browser/node_modules/@isomorphic-git/lightning-fs/dist/lightning-fs.min.js browser/public/vendor/lightning-fs/
+cp browser/node_modules/isomorphic-git/index.umd.min.js browser/public/vendor/isomorphic-git/
 
 runtime_path="browser/runtime/ruby+stdlib.wasm"
 metadata_path="browser/runtime/runtime.json"
@@ -28,6 +32,8 @@ mkdir -p "$staging_dir/src/retro_ui/app/components/retro_ui" "$staging_dir/src/r
 cp -R "$RETROUI_SOURCE/app/components/retro_ui/rails" "$staging_dir/src/retro_ui/app/components/retro_ui/"
 cp -R "$RETROUI_SOURCE/lib/retro_ui/rails" "$staging_dir/src/retro_ui/lib/retro_ui/"
 BUNDLE_GEMFILE="$PWD/browser/Gemfile" ruby browser/scripts/stage_view_gems.rb "$staging_dir"
+ruby -Ilib -r ./examples/constellation/editor -rjson -e \
+  'STDOUT.write(JSON.pretty_generate(EDITOR.workspace.manifest) + "\\n")' > browser/public/workspace-config.json
 RUBY_WASM_RUNTIME_PACKAGE="mobilis-ruby-wasm" \
 RUBY_WASM_RUNTIME_VERSION="2.10.1-ruby-4.0.10-rails-8.1.4.1" \
 ruby browser/scripts/build_application.rb "$staging_dir" browser/public

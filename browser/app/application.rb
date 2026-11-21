@@ -7,7 +7,20 @@ module DieslBrowser
   # passes. Do not mistake this for the final component renderer.
   class Application
     def initialize
-      @session = Diesl::Session.new(schema: EDITOR, source: File.read("/src/examples/constellation/#{EDITOR.workspace.source.path}"))
+      default_source = File.read("/src/examples/constellation/#{EDITOR.workspace.source.path}")
+      workspace = JS.global[:DieslWorkspace]
+      stored = workspace[:hasBootstrapSource].to_s == "true" ? workspace[:bootstrapSource].to_s : nil
+      previous = workspace[:bootstrapValidSource].to_s
+      valid = [stored, previous, default_source].compact.find do |candidate|
+        begin
+          EDITOR.inspect(candidate)
+          true
+        rescue Diesl::InvalidSource, Diesl::UnsafeEdit
+          false
+        end
+      end
+      @session = Diesl::Session.new(schema: EDITOR, source: valid)
+      @session.type_source(stored, expected_revision: @session.revision) if stored && stored != valid
       @handlers = []
       @error = nil
       @renderer = ComponentRenderer.new
@@ -18,6 +31,7 @@ module DieslBrowser
       @document.call(:querySelector, "#app")[:innerHTML] = shell
       target("toolbar-region")[:innerHTML] = @renderer.render(Components::Toolbar.new)
       render_regions
+      persist_source
       input_handler = proc { |event| handle_input(event) }
       change_handler = proc { |event| handle_change(event) }
       blur_handler = proc { |event| @session.end_source_edit if event[:target][:id].to_s == "dsl-source" }
@@ -35,6 +49,10 @@ module DieslBrowser
       '<header><h1>Diesl · Ruby 4.0.10 WASM</h1><span class="muted">Direct Ruby DOM events · no Rails server</span></header>' \
         '<p class="muted">Ruby-driven editing with real ViewComponent / RetroUI rendering.</p>' \
         '<div id="toolbar-region" class="toolbar"></div>' \
+        '<section id="workspace-region"><h2>Workspace · Git</h2><p id="workspace-status" class="muted">Initializing…</p>' \
+        '<div class="toolbar"><button id="workspace-stage">Stage all</button>' \
+        '<input id="workspace-message" placeholder="Commit message" aria-label="Git commit message">' \
+        '<button id="workspace-commit">Commit</button></div><ol id="workspace-history"></ol></section>' \
         '<div id="diagnostics"></div><div class="columns"><section><h2>Source DSL</h2><div id="source-region"></div></section>' \
         '<section><h2>Declarative editor</h2><div id="inspector-region"></div></section></div>'
     end
@@ -46,7 +64,7 @@ module DieslBrowser
     end
 
     def render_source
-      target("source-region")[:innerHTML] = @renderer.render(Components::SourceEditor.new(source: @session.source))
+      target("source-region")[:innerHTML] = @renderer.render(Components::SourceEditor.new(source: @session.draft_source))
     end
 
     def render_inspector
@@ -89,6 +107,7 @@ module DieslBrowser
         render_inspector if result.changed
         sync_inspector_disabled
         render_status
+        persist_source
         return
       end
 
@@ -131,6 +150,7 @@ module DieslBrowser
       render_source
       sync_record_offsets
       render_status
+      persist_source
     end
 
     # Prism IDs are byte offsets. Editing an earlier declaration moves later
@@ -156,9 +176,14 @@ module DieslBrowser
       @session.public_send(id)
       @error = nil
       render_regions
+      persist_source
     rescue Diesl::Conflict, Diesl::InvalidSource => error
       @error = "#{error.class}: #{error.message}"
       render_status
+    end
+
+    def persist_source
+      JS.global[:DieslWorkspace].call(:persistSource, @session.draft_source, @session.draft_valid?)
     end
 
     def target(id)
