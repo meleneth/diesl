@@ -52,7 +52,7 @@ module DieslBrowser
         '<div id="toolbar-region" class="toolbar"></div>' \
         '<button id="restore-demo" type="button">Restore demo document</button>' \
         '<section id="workspace-region"><h2>Workspace · Git</h2><p id="workspace-status" class="muted">Initializing…</p>' \
-        '<div class="toolbar"><button id="workspace-stage">Stage all</button>' \
+        '<div class="toolbar"><button id="workspace-stage">Stage configured artifacts</button>' \
         '<input id="workspace-message" placeholder="Commit message" aria-label="Git commit message">' \
         '<button id="workspace-commit">Commit</button></div>' \
         '<h3>Configured staging targets</h3><ul id="workspace-policy-paths"></ul>' \
