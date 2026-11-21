@@ -89,7 +89,7 @@ module DieslBrowser
     end
 
     def sync_inspector_disabled
-      controls = target("inspector-region").call(:querySelectorAll, "[data-field]")
+      controls = target("inspector-region").call(:querySelectorAll, "[data-field], #create-entity, #create-name, #create-record, .remove-record")
       controls[:length].to_i.times do |index|
         controls.call(:item, index)[:disabled] = !@session.draft_valid?
       end
