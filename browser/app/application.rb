@@ -10,11 +10,13 @@ module DieslBrowser
       @session = Diesl::Session.new(schema: EDITOR, source: File.read("/src/examples/constellation/fleet.rb"))
       @handlers = []
       @error = nil
+      @renderer = ComponentRenderer.new
     end
 
     def start
       @document = JS.global[:document]
       @document.call(:querySelector, "#app")[:innerHTML] = shell
+      target("toolbar-region")[:innerHTML] = @renderer.render(Components::Toolbar.new)
       render_regions
       input_handler = proc { |event| handle_input(event) }
       change_handler = proc { |event| handle_change(event) }
@@ -31,8 +33,8 @@ module DieslBrowser
 
     def shell
       '<header><h1>Diesl · Ruby 4.0.10 WASM</h1><span class="muted">Direct Ruby DOM events · no Rails server</span></header>' \
-        '<p class="muted">Ruby-driven source editing smoke test. ViewComponent renderer remains gated on Nokogiri/WASI.</p>' \
-        '<div class="toolbar"><button id="undo">Undo</button><button id="redo">Redo</button></div>' \
+        '<p class="muted">Ruby-driven editing with real ViewComponent / RetroUI rendering.</p>' \
+        '<div id="toolbar-region" class="toolbar"></div>' \
         '<div id="diagnostics"></div><div class="columns"><section><h2>Source DSL</h2><div id="source-region"></div></section>' \
         '<section><h2>Declarative editor</h2><div id="inspector-region"></div></section></div>'
     end
@@ -44,29 +46,13 @@ module DieslBrowser
     end
 
     def render_source
-      target("source-region")[:innerHTML] = %(<textarea id="dsl-source" spellcheck="false">#{escape(@session.source)}</textarea>)
+      target("source-region")[:innerHTML] = @renderer.render(Components::SourceEditor.new(source: @session.source))
     end
 
     def render_inspector
-      html = @session.records.map do |record|
-        fields = EDITOR.entities.fetch(record.entity).fields.filter_map do |field|
-          next unless record.values.key?(field.name)
-          value = record.values.fetch(field.name)
-          editable = record.editable.fetch(field.name, false)
-          input = if !editable
-                    %(<span class="muted">Dynamic expression (read only)</span>)
-                  elsif field.type == :boolean
-                    %(<select data-entity="#{record.entity}" data-id="#{record.id}" data-field="#{field.name}" data-type="boolean">) \
-                      + [true, false].map { |v| %(<option value="#{v}"#{v == value ? ' selected' : ''}>#{v}</option>) }.join \
-                      + '</select>'
-                  else
-                    %(<input data-entity="#{record.entity}" data-id="#{record.id}" data-field="#{field.name}" data-type="#{field.type}" type="#{field.type == :integer ? 'number' : 'text'}" value="#{escape(value)}">)
-                  end
-          %(<div class="field"><label>#{escape(field.name)}</label>#{input}</div>)
-        end.join
-        %(<div class="record"><strong>#{escape(record.entity)}</strong>#{fields}</div>)
-      end.join
-      target("inspector-region")[:innerHTML] = html
+      target("inspector-region")[:innerHTML] = @renderer.render(
+        Components::Inspector.new(schema: EDITOR, records: @session.records)
+      )
       sync_inspector_disabled
     end
 

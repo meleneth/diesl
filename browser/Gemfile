@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+source "https://rubygems.org"
+ruby "4.0.10"
+
+# These supply ViewComponent's renderer. No Rails server/application is booted.
+gem "view_component", "4.5.0"
+gem "actionview", "8.1.4.1"
+gem "railties", "8.1.4.1"

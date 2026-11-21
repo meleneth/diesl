@@ -4,6 +4,7 @@ raise "Diesl requires Ruby 4.0.10, got #{RUBY_VERSION}" unless RUBY_VERSION == "
 
 require "js"
 require "diesl"
+require "view_components"
 require "application"
 
 DieslBrowser::Application.new.start

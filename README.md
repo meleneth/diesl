@@ -43,6 +43,6 @@ docker compose up --build
 
 Open [http://localhost:8080](http://localhost:8080). Edit the Rocinante crew number in the generated inspector, then confirm the source DSL updates surgically. Try undo/redo and a raw-source change. Run `docker compose logs -f playground` if the build fails, and inspect the red boot error message in the browser for runtime errors.
 
-The smoke UI is **Ruby-owned** and runs from the WASM `js` event bridge. It is **not yet ViewComponent rendering**: the compatibility probe from Mobilis is an existing gate for that part of the work. See [Docker setup and limitations](docs/docker.md).
+The smoke UI is **Ruby-owned** and runs from the WASM `js` event bridge. The renderer uses real RetroUI ViewComponents, though its Ruby/WASI compatibility still needs a browser verification. See [integration notes](docs/view-components.md). See [Docker setup and limitations](docs/docker.md).
 
 If the runtime artifact image is missing, return to the Mobilis checkout and use `bin/build-playground-runtime` once; do not rebuild its native dependencies from Diesl. The container will not download or substitute another Ruby version.

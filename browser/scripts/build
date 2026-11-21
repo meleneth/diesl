@@ -23,6 +23,11 @@ mkdir -p "$staging_dir/src/lib" "$staging_dir/src/app" "$staging_dir/src/example
 cp -R lib/. "$staging_dir/src/lib/"
 cp -R browser/app/. "$staging_dir/src/app/"
 cp -R examples/constellation/. "$staging_dir/src/examples/constellation/"
+test -d "${RETROUI_SOURCE:?RETROUI_SOURCE must reference pinned RetroUI checkout}"
+mkdir -p "$staging_dir/src/retro_ui/app/components/retro_ui" "$staging_dir/src/retro_ui/lib/retro_ui"
+cp -R "$RETROUI_SOURCE/app/components/retro_ui/rails" "$staging_dir/src/retro_ui/app/components/retro_ui/"
+cp -R "$RETROUI_SOURCE/lib/retro_ui/rails" "$staging_dir/src/retro_ui/lib/retro_ui/"
+BUNDLE_GEMFILE="$PWD/browser/Gemfile" ruby browser/scripts/stage_view_gems.rb "$staging_dir"
 RUBY_WASM_RUNTIME_PACKAGE="mobilis-ruby-wasm" \
 RUBY_WASM_RUNTIME_VERSION="2.10.1-ruby-4.0.10-rails-8.1.4.1" \
 ruby browser/scripts/build_application.rb "$staging_dir" browser/public
