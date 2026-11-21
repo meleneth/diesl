@@ -54,7 +54,10 @@ module DieslBrowser
         '<section id="workspace-region"><h2>Workspace · Git</h2><p id="workspace-status" class="muted">Initializing…</p>' \
         '<div class="toolbar"><button id="workspace-stage">Stage all</button>' \
         '<input id="workspace-message" placeholder="Commit message" aria-label="Git commit message">' \
-        '<button id="workspace-commit">Commit</button></div><ol id="workspace-history"></ol></section>' \
+        '<button id="workspace-commit">Commit</button></div>' \
+        '<h3>Configured staging targets</h3><ul id="workspace-policy-paths"></ul>' \
+        '<h3>Currently staged files</h3><ul id="workspace-staged-paths"></ul>' \
+        '<h3>Commit history</h3><ol id="workspace-history"></ol></section>' \
         '<div id="diagnostics"></div><div class="columns"><section><h2>Source DSL</h2><div id="source-region"></div></section>' \
         '<section><h2>Declarative editor</h2><div id="inspector-region"></div></section></div>'
     end
