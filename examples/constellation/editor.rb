@@ -8,7 +8,7 @@ EDITOR = Diesl::Editor.define do
     root "/workspace"
     source "fleet.rb", last_valid: ".diesl/last-valid.rb"
     storage :browser
-    git branch: "main", author_name: "Diesl Playground", author_email: "playground@diesl.local"
+    git branch: "main", author_name: "Diesl Playground", author_email: "playground@diesl.local", stage: [:source]
     generated "generate"
   end
 
