@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/.bundle
+**/vendor/bundle
+browser/public/vendor
+browser/public/runtime-config.json
+browser/public/diesl-app-*.tar
+browser/public/diesl-app-manifest.json
+browser/runtime

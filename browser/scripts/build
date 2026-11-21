@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+mkdir -p browser/public/vendor/ruby-wasm-wasi browser/public/vendor/wasi browser/public/vendor
+cp -R browser/node_modules/@ruby/wasm-wasi/dist/esm/. browser/public/vendor/ruby-wasm-wasi/
+cp -R browser/node_modules/@bjorn3/browser_wasi_shim/dist/. browser/public/vendor/wasi/
+
+runtime_path="browser/runtime/ruby+stdlib.wasm"
+metadata_path="browser/runtime/runtime.json"
+test -s "$runtime_path"
+test -s "$metadata_path"
+RUBY_WASM_RUNTIME_METADATA="$metadata_path" \
+RUBY_WASM_RUNTIME_PACKAGE="mobilis-ruby-wasm" \
+RUBY_WASM_RUNTIME_VERSION="2.10.1-ruby-4.0.10-rails-8.1.4.1" \
+RUBY_WASM_RUNTIME_URL="/vendor/ruby+stdlib.wasm" \
+ruby browser/scripts/build_runtime_config.rb "$runtime_path" browser/public/runtime-config.json
+cp "$runtime_path" browser/public/vendor/ruby+stdlib.wasm
+
+staging_dir="$(mktemp -d)"
+trap 'rm -rf "$staging_dir"' EXIT
+mkdir -p "$staging_dir/src/lib" "$staging_dir/src/app" "$staging_dir/src/examples/constellation"
+cp -R lib/. "$staging_dir/src/lib/"
+cp -R browser/app/. "$staging_dir/src/app/"
+cp -R examples/constellation/. "$staging_dir/src/examples/constellation/"
+RUBY_WASM_RUNTIME_PACKAGE="mobilis-ruby-wasm" \
+RUBY_WASM_RUNTIME_VERSION="2.10.1-ruby-4.0.10-rails-8.1.4.1" \
+ruby browser/scripts/build_application.rb "$staging_dir" browser/public

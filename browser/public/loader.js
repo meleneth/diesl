@@ -223,3 +223,5 @@ function escapeHtml(value) {
   return node.innerHTML;
 }
 
+
+export { loadApplication, fetchJson, fetchRequired, validateRuntimeConfig, verifyBytes, hydrateFilesystem, escapeHtml };
