@@ -4,6 +4,14 @@ require "diesl"
 
 # An editor definition, NOT a reimplementation of the application DSL.
 EDITOR = Diesl::Editor.define do
+  workspace do
+    root "/workspace"
+    source "fleet.rb", last_valid: ".diesl/last-valid.rb"
+    storage :browser
+    git branch: "main", author_name: "Diesl Playground", author_email: "playground@diesl.local"
+    generated "generate"
+  end
+
   entity :ship, label: "Starship" do
     field :name, type: :string, required: true
     field :class_name, type: :string

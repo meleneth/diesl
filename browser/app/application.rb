@@ -7,7 +7,7 @@ module DieslBrowser
   # passes. Do not mistake this for the final component renderer.
   class Application
     def initialize
-      @session = Diesl::Session.new(schema: EDITOR, source: File.read("/src/examples/constellation/fleet.rb"))
+      @session = Diesl::Session.new(schema: EDITOR, source: File.read("/src/examples/constellation/#{EDITOR.workspace.source.path}"))
       @handlers = []
       @error = nil
       @renderer = ComponentRenderer.new

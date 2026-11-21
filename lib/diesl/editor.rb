@@ -34,6 +34,7 @@ module Diesl
 
     def initialize
       @entities = {}
+      @workspace = nil
     end
 
     def entity(name, label: name.to_s.capitalize, &block)
@@ -44,6 +45,17 @@ module Diesl
     end
 
     def entities = @entities.dup.freeze
+    attr_reader :workspace
+
+    # Workspace is part of the editor definition, not a second app config.
+    def workspace(&block)
+      raise ArgumentError, "Workspace already declared" if @workspace
+      raise ArgumentError, "Workspace needs a block" unless block
+
+      builder = Workspace::Builder.new
+      builder.instance_eval(&block)
+      @workspace = builder.build
+    end
 
     # Project supported literal call arguments into editor records.
     # Dynamic values are visible but are intentionally not writable.
