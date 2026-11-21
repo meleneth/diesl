@@ -1,6 +1,8 @@
 # Diesl
 
-A standalone, extractable Ruby DSL authoring core incubated from Mobilis's browser editor.
+A standalone Ruby DSL authoring core extracted from Mobilis's browser editor.
+
+**Ruby 4.0.10 exclusively.** The required runtime version is pinned in `.ruby-version`, `Gemfile`, `diesl.gemspec`, and CI. Older and newer interpreters are unsupported. There is no compatibility matrix.
 
 Diesl is **not** a service generator, a Rails integration, or a second source of truth. It provides conservative Prism-located source edits, optimistic revision checks, and structured undo/redo. The caller owns DSL interpretation, schema, rendering, and persistence.
 
@@ -20,12 +22,12 @@ puts updated # config "new", enabled: true
 
 `Source#replace_literal` accepts only static literal Prism nodes. Dynamic expressions are never overwritten. Returned source is a new string, not a mutation. Revision mismatches and syntax failures raise explicit errors.
 
-Run `bundle install && bundle exec rspec spec` from the Diesl repository root.
+Run `bundle install && bundle exec rspec spec` with Ruby 4.0.10.
 
 ## Extraction boundaries
 
 - Generic: Prism parsing, literal discovery, precise byte ranges, Ruby literal serialization, revision-guarded transactions, structured undo/redo.
 - Application-owned: DSL root discovery, supported method names and property schema, source evaluation, semantic validation, virtual-file archive codec, Mermaid projection, Turbo/DOM, LightningFS, isomorphic-git and browser runtime.
-- Next step: migrate Mobilis SourceDocument to Diesl primitives behind compatibility tests; then extract virtual document and workspace adapters without copying Mobilis-specific filenames or assumptions.
+- Next step: extract generic schema adapters, virtual-document editing and browser workspace functionality. Mobilis integration will happen through an adapter later; no Mobilis changes are required for initial Diesl development.
 
-No Ruby version or Rails image changes are part of this work. Diesl is an independent repository. Mobilis integration will be done through an adapter.
+Diesl is independent of Mobilis. No Rails or Docker image changes belong to this extraction.
