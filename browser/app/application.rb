@@ -195,7 +195,7 @@ module DieslBrowser
       @error = nil
       render_regions
       persist_source
-    rescue Diesl::Conflict, Diesl::InvalidSource => error
+    rescue ArgumentError, KeyError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
       @error = "#{error.class}: #{error.message}"
       render_status
     end
