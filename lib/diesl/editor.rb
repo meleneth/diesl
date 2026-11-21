@@ -37,6 +37,7 @@ module Diesl
       @entities = {}
       @workspace = nil
       @container = nil
+      @source_adapter = nil
     end
 
     def entity(name, label: name.to_s.capitalize, creatable: false, &block)
@@ -47,6 +48,21 @@ module Diesl
     end
 
     def entities = @entities.dup.freeze
+
+    # Delegate semantic operations for complex DSLs to a declared domain adapter.
+    # Existing simple editors continue using the built-in Prism transformations.
+    def source_adapter(adapter = nil)
+      return @source_adapter unless adapter
+      raise ArgumentError, "Source adapter already declared" if @source_adapter
+      raise ArgumentError, "Source adapter must support #analyze, #apply and #session" unless
+        %i[analyze apply session].all? { |method| adapter.respond_to?(method) }
+      @source_adapter = adapter
+    end
+
+    def adapted_session(source:)
+      raise ArgumentError, "Editor has no source adapter" unless @source_adapter
+      @source_adapter.session(source:)
+    end
 
     def container(name = nil)
       return @container unless name
