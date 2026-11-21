@@ -43,6 +43,18 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
   const fs = new FileSystem("diesl-v1-" + policy.source.path.replaceAll("/", "_"));
   const pfs = fs.promises;
   const dir = policy.root;
+  const stageKinds = policy.git?.stage;
+  if (policy.git && (!Array.isArray(stageKinds) || stageKinds.length === 0 ||
+      stageKinds.some(kind => !["source", "generated"].includes(kind))))
+    throw new Error("Git staging requires explicit source/generated selection");
+  const stageRoots = () => [
+    ...(stageKinds?.includes("source") ? [policy.source.path] : []),
+    ...(stageKinds?.includes("generated") ? policy.generated.map(item => item.path) : [])
+  ];
+  const allowed = path => stageRoots().some(root =>
+    path === root || (stageKinds.includes("generated") &&
+      policy.generated.some(item => item.path === root) && path.startsWith(root + "/")));
+
   const internalSnapshot = policy.source.last_valid;
   const ignoreRule = internalSnapshot.includes("/")
     ? internalSnapshot.slice(0, internalSnapshot.lastIndexOf("/") + 1)
@@ -88,9 +100,10 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     if (!policy.git) return;
     try { await git.resolveRef({fs, dir, ref: "HEAD"}); return; }
     catch (e) { if (!/not found|Could not resolve|unknown ref|ENOENT/i.test(String(e.message))) throw e; }
-    await git.add({fs, dir, filepath: policy.source.path});
-    await git.add({fs, dir, filepath: ".gitignore"});
-    await git.commit({fs, dir, message: "Initialize Diesl workspace", author: policy.git.author});
+    if (stageKinds.includes("source")) {
+      await git.add({fs, dir, filepath: policy.source.path});
+      await git.commit({fs, dir, message: "Initialize Diesl workspace", author: policy.git.author});
+    }
   }
   async function refreshView() {
     if (!attached || !policy.git) return;
