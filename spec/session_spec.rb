@@ -42,4 +42,28 @@ RSpec.describe Diesl::Session do
     expect(session.records.first.values[:name]).to eq("Rocinante")
     expect(session.history.undo_entries).to be_empty
   end
+
+  it "creates and removes declarations through the same undoable session" do
+    editor = Diesl::Editor.define do
+      container :fleet
+      entity :ship, creatable: true do
+        field :name, type: :string
+        field :crew, type: :integer
+      end
+    end
+    empty = "fleet do\nend\n"
+    session = described_class.new(schema: editor, source: empty)
+    result = session.create(entity: :ship, name: "Rocinante",
+      expected_revision: session.revision)
+    expect(result.records.length).to eq(1)
+    record = result.records.first
+    expect(record.values[:name]).to eq("Rocinante")
+    expect(session.undo.source).to eq(empty)
+    expect(session.redo.records.length).to eq(1)
+    session.remove(entity: :ship, id: session.records.first.id,
+      expected_revision: session.revision)
+    expect(session.records).to be_empty
+    expect(session.undo.records.length).to eq(1)
+  end
+
 end
