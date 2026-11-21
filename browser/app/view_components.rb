@@ -6,6 +6,10 @@ require "view_load_paths"
 require "verify_json"
 require "/src/retro_ui/lib/retro_ui/rails/erb_compat"
 require "action_view"
+# ViewComponent 4.5.0 uses Rails::VERSION when compiling ERB templates.
+# railties provides this real version module without booting Rails itself.
+require "rails/version"
+raise "Rails version mismatch" unless Rails::VERSION::STRING == "8.1.4.1"
 require "view_component"
 require "/src/retro_ui/lib/retro_ui/rails/class_names"
 
