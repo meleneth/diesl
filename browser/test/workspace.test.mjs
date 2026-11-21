@@ -5,7 +5,7 @@ import { createWorkspaceController, validateWorkspaceManifest } from "../public/
 const manifest = () => ({
   version: 1, root: "/workspace", storage: "browser",
   source: {path: "fleet.rb", last_valid: ".diesl/last-valid.rb"},
-  git: {branch: "main", author: {name: "Diesl", email: "test@example.invalid"}},
+  git: {branch: "main", author: {name: "Diesl", email: "test@example.invalid"}, stage: ["source"]},
   generated: [{path: "generate"}], embedded: []
 });
 
@@ -43,12 +43,14 @@ class FakeFS {
 function stub() {
   const filesystem = new FakeFS();
   const history = [];
+  const added = [];
+  let matrix = [];
   const git = {
     init: async () => {filesystem.nodes.set("/workspace/.git", null);},
     resolveRef: async () => {if (!history.length) throw new Error("Could not resolve HEAD"); return "abcd";},
-    add: async () => {},
+    add: async ({filepath}) => {added.push(filepath);},
     commit: async options => {history.push(options.message);},
-    statusMatrix: async () => [],
+    statusMatrix: async () => matrix,
     log: async () => history.map((message, index) => ({
       oid: String(index).padStart(40, "0"), commit: {message}
     }))
@@ -58,10 +60,10 @@ function stub() {
     getElementById: id => elements.get(id) || null,
     createElement: () => ({textContent: ""})
   };
-  const make = () => createWorkspaceController(manifest(), {
+  const make = (policy = manifest()) => createWorkspaceController(policy, {
     FileSystem: class {constructor() {return filesystem;}}, git, documentRef
   });
-  return {filesystem, history, make};
+  return {filesystem, history, added, make, setMatrix: rows => {matrix = rows;}};
 }
 
 test("workspace policy rejects source traversal and generated overlap", () => {
@@ -104,4 +106,34 @@ test("replaying persisted initial content does not create extra commits", async 
   await workspace.persistSource("fleet do\nend\n", true);
   await workspace.persistSource("fleet do\nend\n", true);
   assert.equal(history.length, 1);
+});
+
+test("constellation stages only the declared source file", async () => {
+  const {make, added, setMatrix} = stub();
+  const workspace = make();
+  await workspace.initialize();
+  setMatrix([["fleet.rb",1,2,1],[".gitignore",0,2,0],["generate/result.txt",0,2,0]]);
+  await workspace.stage();
+  assert.deepEqual(added, ["fleet.rb"]);
+});
+
+test("Mobilis-style workspace stages generated files but not its source", async () => {
+  const {make, added, setMatrix, filesystem} = stub();
+  const policy = manifest();
+  policy.source.path = "mobilis.rb";
+  policy.git.stage = ["generated"];
+  const workspace = make(policy);
+  await workspace.initialize();
+  await filesystem.promises.mkdir("/workspace/generate");
+  await filesystem.promises.writeFile("/workspace/generate/compose.yaml", new TextEncoder().encode("services: {}"));
+  setMatrix([["mobilis.rb",1,2,1],["generate/compose.yaml",0,2,0]]);
+  await workspace.stage();
+  assert.deepEqual(added, ["generate/compose.yaml"]);
+});
+
+test("invalid staging policy fails before browser initialization", () => {
+  const policy = manifest();
+  policy.git.stage = ["everything"];
+  const {make} = stub();
+  assert.throws(() => make(policy), /staging requires explicit/);
 });
