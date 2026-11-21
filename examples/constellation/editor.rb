@@ -12,14 +12,16 @@ EDITOR = Diesl::Editor.define do
     generated "generate"
   end
 
-  entity :ship, label: "Starship" do
+  container :fleet
+
+  entity :ship, label: "Starship", creatable: true do
     field :name, type: :string, required: true
     field :class_name, type: :string
     field :crew, type: :integer
     field :active, type: :boolean
   end
 
-  entity :station, label: "Station" do
+  entity :station, label: "Station", creatable: true do
     field :name, type: :string, required: true
     field :sector, type: :string
     field :active, type: :boolean
