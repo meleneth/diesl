@@ -88,8 +88,9 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
   }
   async function flush() { if (typeof fs.flush === "function") await fs.flush(); }
   function errorStatus(e) {
+    console.error("Diesl workspace failure", e);
     const node = documentRef.getElementById("workspace-status");
-    if (node) { node.className = "error"; node.textContent = "Workspace error: " + (e.message || String(e)); }
+    if (node) { node.className = "error"; node.textContent = "Workspace error: " + (e.stack || e.message || String(e)); }
   }
   function enqueue(operation) {
     const work = queue.then(operation);
