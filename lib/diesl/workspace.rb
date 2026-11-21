@@ -93,7 +93,7 @@ module Diesl
         call = call.to_sym
         raise ArgumentError, "Duplicate embedded call: #{call}" if @embedded.any? { |item| item.call == call }
         raise ArgumentError, "Invalid embedded call" unless call.to_s.match?(/\A[a-z_][a-z_0-9]*[!?]?\z/)
-        raise ArgumentError, "Codec must implement #entries and #replace" unless codec.respond_to?(:entries) && codec.respond_to?(:replace)
+        raise ArgumentError, "Codec must implement #unpack and #replace" unless codec.respond_to?(:unpack) && codec.respond_to?(:replace)
         raise ArgumentError, "Editable must be boolean" unless [true, false].include?(editable)
 
         @embedded << Embedded.new(call:, codec:, editable:)
