@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "view_load_paths"
+# Resolve ordinary require "json" to our pure upstream implementation before
+# RubyGems / ActionView pull in incompatible native-extension wrappers.
+require "verify_json"
 require "/src/retro_ui/lib/retro_ui/rails/erb_compat"
 require "action_view"
 require "view_component"

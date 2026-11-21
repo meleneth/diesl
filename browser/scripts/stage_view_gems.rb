@@ -8,6 +8,10 @@ destination = ARGV.fetch(0)
 load_paths = []
 counts = {}
 
+# These extensions are compiled into the dedicated WASM runtime. Never mix
+# host gem Ruby sources with a separately compiled native extension.
+runtime_owned = %w[bigdecimal json nokogiri prism racc]
+
 # Only Ruby runtime code and the templates/configuration it consumes belong
 # in the browser image. Rails generators, CLI fixtures, docs, and tests do not.
 # This is deliberately narrower than copying every gem's entire lib tree.
@@ -20,6 +24,10 @@ exclude = lambda do |relative|
 end
 
 Bundler.load.specs.sort_by(&:name).each do |gem|
+  if runtime_owned.include?(gem.name)
+    puts "  runtime-owned: #{gem.name} (not staged)"
+    next
+  end
   gem.require_paths.each do |relative|
     source = File.join(gem.full_gem_path, relative)
     next unless Dir.exist?(source)
