@@ -45,3 +45,16 @@ No Rails HTTP process or Rails application is permitted. A framework gem require
 ## Out of scope
 
 Rails generators, Docker Compose service generation, a Vue rewrite, server-side data storage, duplicating the Datawires component model, and recreating prior compatibility investigations.
+
+## Carbn extraction
+
+Diesl consumes [Carbn](https://github.com/meleneth/carbn) as a pinned Git gem.
+Carbn owns synchronous reactive transactions, declared region invalidation and
+its real ViewComponent renderer; Diesl keeps Prism/source semantics, session
+history, DSL schema, RetroUI component definitions and browser workspace/Git.
+The browser uses Carbn's Store to refresh only affected regions, preventing
+source-editor cursor loss on every input event. The legacy private
+`ComponentRenderer` class has been removed.
+
+The native Carbn core tests pass on Ruby 3.3. The WASM browser path still
+requires smoke verification on the pinned Ruby 4.0.10 runtime.

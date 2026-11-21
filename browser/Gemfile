@@ -10,3 +10,6 @@ gem "railties", "8.1.4.1"
 # Official pure-Ruby JSON implementation. The existing Ruby WASM image has a
 # JSON Ruby/C API mismatch; do not load its compiled JSON extension.
 gem "json_pure", "2.7.6"
+
+# Reusable rendering and reactive state layer (pinned source, no gem release required).
+gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "84c00cafe31768625378a0f8582dcdbfc2a720d0"

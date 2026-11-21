@@ -11,6 +11,7 @@ require "action_view"
 require "rails/version"
 raise "Rails version mismatch" unless Rails::VERSION::STRING == "8.1.4.1"
 require "view_component"
+require "carbn"
 require "/src/retro_ui/lib/retro_ui/rails/class_names"
 
 # These are the real component classes and colocated ERB templates from the
@@ -127,13 +128,4 @@ module DieslBrowser
     end
   end
 
-  class ComponentRenderer
-    def initialize
-      @context = ActionView::Base.empty
-    end
-
-    def render(component)
-      component.render_in(@context)
-    end
-  end
 end

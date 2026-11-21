@@ -24,7 +24,8 @@ module DieslBrowser
       @session.type_source(stored, expected_revision: @session.revision) if stored && !stored.strip.empty? && stored != valid
       @handlers = []
       @error = nil
-      @renderer = ComponentRenderer.new
+      @renderer = Carbn::ViewComponentRenderer.new
+      initialize_reactivity
     end
 
     def start
@@ -60,6 +61,34 @@ module DieslBrowser
         '<h3>Commit history</h3><ol id="workspace-history"></ol></section>' \
         '<div id="diagnostics"></div><div class="columns"><section><h2>Source DSL</h2><div id="source-region"></div></section>' \
         '<section><h2>Declarative editor</h2><div id="inspector-region"></div></section></div>'
+    end
+
+    def initialize_reactivity
+      graph = Carbn::Graph.define do
+        state :source, initial: 0
+        state :records, initial: 0
+        state :status, initial: 0
+        region :source, depends_on: [:source]
+        region :inspector, depends_on: [:records]
+        region :status, depends_on: [:status]
+      end
+      @reactivity = Carbn::Store.new(graph)
+      @reactivity.subscribe do |regions, _revision|
+        regions.each do |region|
+          case region
+          when :source then render_source
+          when :inspector then render_inspector
+          when :status then render_status
+          end
+        end
+      end
+    end
+
+    # Synchronous Carbn transaction: each affected region renders once.
+    def invalidate(*changes)
+      @reactivity.transaction do
+        changes.each { |name| @reactivity.set(name, @reactivity.get(name) + 1) }
+      end
     end
 
     def render_regions
@@ -109,9 +138,8 @@ module DieslBrowser
         result = @session.type_source(element[:value].to_s,
           expected_revision: @session.revision)
         @error = nil
-        render_inspector if result.changed
+        invalidate(*(result.changed ? %i[records status] : %i[status]))
         sync_inspector_disabled
-        render_status
         persist_source
         return
       end
@@ -122,7 +150,7 @@ module DieslBrowser
       edit_field(element)
     rescue ArgumentError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
       @error = "#{error.class}: #{error.message}"
-      render_status
+      invalidate(:status)
     end
 
     # Select controls fire change rather than per-keystroke input edits.
@@ -153,9 +181,8 @@ module DieslBrowser
       @session.change(entity: entity.to_sym, id: data[:id].to_s, field: field.to_sym,
         value: typed, expected_revision: @session.revision)
       @error = nil
-      render_source
+      invalidate(:source, :status)
       sync_record_offsets
-      render_status
       persist_source
     end
 
@@ -197,7 +224,7 @@ module DieslBrowser
         return
       end
       @error = nil
-      render_regions
+      invalidate(:source, :records, :status)
       persist_source
     rescue ArgumentError, KeyError, Diesl::Conflict, Diesl::UnsafeEdit, Diesl::InvalidSource => error
       @error = "#{error.class}: #{error.message}"
