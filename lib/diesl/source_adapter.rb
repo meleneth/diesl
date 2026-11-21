@@ -18,7 +18,7 @@ module Diesl
         operation = name.to_sym
         method = method_name.to_sym
         raise ArgumentError, "Invalid operation name: #{operation}" unless operation.to_s.match?(/\A[a-z][a-z_0-9]*\z/)
-        raise ArgumentError, "Adapter operation must be public: #{method}" unless document_class.public_instance_methods.include?(method)
+        raise ArgumentError, "Adapter operation must be public: #{method}" unless document_class.public_instance_methods(false).include?(method)
         [operation, method]
       end.freeze
       raise ArgumentError, "Duplicate adapter operations" unless @operations.size == operations.size
