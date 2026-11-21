@@ -43,6 +43,10 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
   const fs = new FileSystem("diesl-v1-" + policy.source.path.replaceAll("/", "_"));
   const pfs = fs.promises;
   const dir = policy.root;
+  const internalSnapshot = policy.source.last_valid;
+  const ignoreRule = internalSnapshot.includes("/")
+    ? internalSnapshot.slice(0, internalSnapshot.lastIndexOf("/") + 1)
+    : internalSnapshot;
   let initialized = false, attached = false;
   let queue = Promise.resolve();
   const absolute = path => dir + "/" + pathCheck(path);
@@ -85,6 +89,7 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
     try { await git.resolveRef({fs, dir, ref: "HEAD"}); return; }
     catch (e) { if (!/not found|Could not resolve|unknown ref|ENOENT/i.test(String(e.message))) throw e; }
     await git.add({fs, dir, filepath: policy.source.path});
+    await git.add({fs, dir, filepath: ".gitignore"});
     await git.commit({fs, dir, message: "Initialize Diesl workspace", author: policy.git.author});
   }
   async function refreshView() {
@@ -127,6 +132,14 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
         if (!initialized) throw new Error("Workspace not initialized");
         await write(policy.source.path, String(source));
         if (valid) await write(policy.source.last_valid, String(source));
+        if (policy.git) {
+          const existingIgnore = await read(".gitignore");
+          const rule = "/" + ignoreRule;
+          if (!existingIgnore || !existingIgnore.split("\n").includes(rule)) {
+            await write(".gitignore", (existingIgnore || "") + 
+              (existingIgnore && !existingIgnore.endsWith("\n") ? "\n" : "") + rule + "\n");
+          }
+        }
         await commitInitialSource();
         await flush();
         await refreshView();
