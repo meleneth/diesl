@@ -31,9 +31,16 @@ async function runCase(stage, sourcePath, expected) {
   await workspace.persistGenerated("generate", JSON.stringify({
     "compose.yaml": btoa("services: {}\n")
   }));
+  await assert.rejects(git.resolveRef({fs: filesystem, dir: "/workspace", ref: "HEAD"}),
+    error => error.code === "NotFoundError");
   await workspace.stage();
-  const matrix = await git.statusMatrix({fs: filesystem, dir: "/workspace"});
-  const staged = matrix.filter(([,head,,index]) => head !== index).map(([path]) => path);
+  const matrix = await git.statusMatrix({fs: filesystem, dir: "/workspace"}).catch(
+    error => error.code === "NotFoundError" ? null : Promise.reject(error)
+  );
+  const stagedRows = matrix ?? (await git.listFiles({fs: filesystem, dir: "/workspace"})).map(
+    path => [path, 0, 2, 2]
+  );
+  const staged = stagedRows.filter(([,head,,index]) => head !== index).map(([path]) => path);
   assert.deepEqual(staged, expected);
   await workspace.commit("Record declared artifacts");
   const log = await git.log({fs: filesystem, dir: "/workspace", depth: 1});
