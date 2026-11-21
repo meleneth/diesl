@@ -19,7 +19,22 @@ export function validateWorkspaceManifest(m) {
   pathCheck(m.source.path);
   pathCheck(m.source.last_valid);
   if (m.source.path === m.source.last_valid) throw new Error("Overlapping source paths");
-  m.generated.forEach(entry => pathCheck(entry.path));
+  const reserved = [m.source.path, m.source.last_valid, ".git", ".gitignore"];
+  const generated = [];
+  for (const entry of m.generated) {
+    pathCheck(entry.path);
+    if (reserved.some(path => path === entry.path || path.startsWith(entry.path + "/") ||
+        entry.path.startsWith(path + "/")) ||
+        generated.some(path => path === entry.path || path.startsWith(entry.path + "/") ||
+          entry.path.startsWith(path + "/")))
+      throw new Error("Overlapping generated workspace path");
+    generated.push(entry.path);
+  }
+  if (m.git && (!m.git.author || !m.git.author.name || !m.git.author.email ||
+      !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(m.git.branch) ||
+      m.git.branch.includes("..") || m.git.branch.includes("//") ||
+      m.git.branch.endsWith(".lock")))
+    throw new Error("Invalid workspace Git policy");
   return m;
 }
 
@@ -113,6 +128,55 @@ export function createWorkspaceController(manifest, { FileSystem = window.Lightn
         await write(policy.source.path, String(source));
         if (valid) await write(policy.source.last_valid, String(source));
         await commitInitialSource();
+        await flush();
+        await refreshView();
+      });
+    },
+    // Generated content is committed atomically to a declared subtree.
+    // Values are Base64 strings so binary files remain byte-exact.
+    persistGenerated(root, serialized) {
+      return enqueue(async () => {
+        if (!policy.generated.some(item => item.path === root))
+          throw new Error("Undeclared generated root");
+        const files = JSON.parse(serialized);
+        if (!files || Array.isArray(files) || typeof files !== "object")
+          throw new Error("Generated files must be a path-to-Base64 object");
+        for (const path of Object.keys(files)) pathCheck(path);
+        const next = root + "-next", previous = root + "-previous";
+        const remove = async path => {
+          if (!await exists(path)) return;
+          const stat = await pfs.stat(path);
+          if (stat.isDirectory()) {
+            for (const child of await pfs.readdir(path)) await remove(path + "/" + child);
+            await pfs.rmdir(path);
+          } else await pfs.unlink(path);
+        };
+        // Temporary paths must not conflict with declared or reserved roots.
+        for (const candidate of [next, previous]) {
+          if ([policy.source.path, policy.source.last_valid, ".git", ".gitignore",
+            ...policy.generated.map(item => item.path)].some(path =>
+              path === candidate || path.startsWith(candidate + "/") ||
+              candidate.startsWith(path + "/")))
+            throw new Error("Generated staging path conflicts with workspace");
+        }
+        await remove(absolute(next));
+        await remove(absolute(previous));
+        await mkdirp(absolute(next));
+        for (const [path, encoded] of Object.entries(files)) {
+          if (typeof encoded !== "string") throw new Error("Generated content must be Base64");
+          const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+          const target = absolute(next + "/" + path);
+          await mkdirp(target.slice(0, target.lastIndexOf("/")));
+          await pfs.writeFile(target, bytes);
+        }
+        const hadOld = await exists(absolute(root));
+        if (hadOld) await pfs.rename(absolute(root), absolute(previous));
+        try { await pfs.rename(absolute(next), absolute(root)); }
+        catch (error) {
+          if (hadOld) await pfs.rename(absolute(previous), absolute(root));
+          throw error;
+        }
+        await remove(absolute(previous));
         await flush();
         await refreshView();
       });
