@@ -1,0 +1,48 @@
+module Diesl
+  class Editor
+    class Field
+      attr_reader name: Symbol
+      attr_reader type: Symbol
+      attr_reader required: bool
+      attr_reader options: Array[untyped]?
+      attr_reader default: untyped
+      def self.new: (name: Symbol, type: Symbol, required: bool, options: Array[untyped]?, default: untyped) -> Field
+    end
+    class Entity
+      attr_reader name: Symbol
+      attr_reader label: String
+      attr_reader fields: Array[Field]
+      attr_reader creatable: bool
+      def self.new: (name: Symbol, label: String, fields: Array[Field], creatable: bool) -> Entity
+    end
+    class Record
+      attr_reader id: String
+      attr_reader entity: Symbol
+      attr_reader values: Hash[Symbol, untyped]
+      attr_reader editable: Hash[Symbol, bool]
+      def self.new: (id: String, entity: Symbol, values: Hash[Symbol, untyped], editable: Hash[Symbol, bool]) -> Record
+    end
+
+    class EntityBuilder
+      def initialize: (Symbol | String name, label: String, ?creatable: bool) -> void
+      def field: (Symbol | String name, type: Symbol | String, ?required: bool, ?options: Array[untyped]?, ?default: untyped) -> Array[Field]
+      def build: () -> Entity
+    end
+
+    def self.define: () { () [self: Editor] -> untyped } -> Editor
+    def initialize: () -> void
+    def entity: (Symbol | String name, ?label: String, ?creatable: bool) { () [self: EntityBuilder] -> untyped } -> Entity
+    def entities: () -> Hash[Symbol, Entity]
+    def source_adapter: (?SourceAdapter? adapter) -> SourceAdapter?
+    def adapted_session: (source: String) -> AdaptedSession
+    def container: (?Symbol | String name) -> Symbol?
+    def workspace: () -> Workspace?
+                 | () { () [self: Workspace::Builder] -> untyped } -> Workspace
+    def create: (String source, entity: Symbol | String, name: String, expected_revision: String) -> String
+    def remove: (String source, entity: Symbol | String, id: String, expected_revision: String) -> String
+    def inspect: (String source) -> Array[Record]
+    def update: (String source, entity: Symbol | String, id: String, field: Symbol | String, value: untyped, expected_revision: String) -> String
+    private
+    def validate_value: (Field field, untyped value) -> untyped
+  end
+end
