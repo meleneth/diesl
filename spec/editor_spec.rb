@@ -32,6 +32,22 @@ RSpec.describe Diesl::Editor do
     expect(updated).to eq(text.sub("crew: 4", "crew: 6"))
   end
 
+  it "preserves field defaults in the declarative schema and creates expressive blocks" do
+    editor = described_class.define do
+      container :fleet
+      entity :ship, creatable: true do
+        field :name, type: :string, required: true
+        field :tags, type: :strings, default: ["scout", "explorer"]
+      end
+    end
+    field = editor.entities.fetch(:ship).fields.find { |item| item.name == :tags }
+    expect(field.default).to eq(["scout", "explorer"])
+    expect(field.default).to be_frozen
+    generated = editor.create("fleet do\nend\n", entity: :ship, name: "Rocinante",
+      expected_revision: Diesl::Source.new("fleet do\nend\n").revision)
+    expect(generated).to include('tags: ["scout", "explorer"]')
+  end
+
   it "declares, edits, and validates string collection fields" do
     collection_editor = described_class.define do
       entity :warehouse do
