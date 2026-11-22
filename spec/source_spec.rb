@@ -27,6 +27,26 @@ RSpec.describe Diesl::Source do
     expect(document.keyword_elements(ship).map { |entry| document.keyword_name(entry) }).to eq(%i[crew tags])
   end
 
+  it "makes enclosing block semantics explicit and prunes opaque nested DSL calls" do
+    document = described_class.new(<<~RUBY)
+      fleet do
+        ship("Rocinante", name: "keeper")
+        embedded_archive("opaque", payload: "keeper")
+        group do
+          ship("Nested")
+        end
+      end
+    RUBY
+    root = document.calls(name: :fleet).first
+    expect(document.block_calls(container: root, name: :ship).length).to eq(1)
+    names = document.nodes(
+      within: root.block.body,
+      prune: ->(node) { node.is_a?(Prism::CallNode) && node.name == :embedded_archive }
+    ).grep(Prism::StringNode).map(&:unescaped)
+    expect(names).to include("Rocinante", "keeper", "Nested")
+    expect(names).not_to include("opaque")
+  end
+
   it "marks dynamic keywords without executing them" do
     document = described_class.new('ship "Rocinante", crew: compute()')
     expect(document.keyword_values(document.calls(name: :ship).first)).to eq(crew: :dynamic)
