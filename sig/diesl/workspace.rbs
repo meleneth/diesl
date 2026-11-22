@@ -1,0 +1,47 @@
+module Diesl
+  class Workspace
+    class SourceFile
+      attr_reader path: String
+      attr_reader last_valid: String
+      def self.new: (path: String, last_valid: String) -> SourceFile
+    end
+    class Git
+      attr_reader branch: String
+      attr_reader author_name: String
+      attr_reader author_email: String
+      attr_reader stage: Array[Symbol]
+      def self.new: (branch: String, author_name: String, author_email: String, stage: Array[Symbol]) -> Git
+    end
+    class Embedded
+      attr_reader call: Symbol
+      attr_reader codec: untyped
+      attr_reader editable: bool
+      def self.new: (call: Symbol, codec: untyped, editable: bool) -> Embedded
+    end
+    class Generated
+      attr_reader path: String
+      def self.new: (path: String) -> Generated
+    end
+
+    attr_reader root: String
+    attr_reader source: SourceFile
+    attr_reader storage: Symbol
+    attr_reader git: Git?
+    attr_reader generated: Array[Generated]
+    attr_reader embedded: Array[Embedded]
+    def initialize: (root: String, source: SourceFile, storage: Symbol, git: Git?, generated: Array[Generated], embedded: Array[Embedded]) -> void
+    def manifest: () -> Hash[Symbol, untyped]
+
+    class Builder
+      def initialize: () -> void
+      def root: (String path) -> String
+      def source: (String path, ?last_valid: String) -> SourceFile
+      def storage: (Symbol | String kind) -> Symbol
+      def git: (?branch: String, author_name: String, author_email: String, stage: Array[Symbol]) -> Git
+      def generated: (String path) -> Array[Generated]
+      def embedded: (Symbol | String call, codec: untyped, ?editable: bool) -> Array[Embedded]
+      def build: () -> Workspace
+      def self.path!: (String path, ?absolute: bool) -> String
+    end
+  end
+end
