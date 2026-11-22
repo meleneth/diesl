@@ -14,3 +14,14 @@ ruby_diesl:
     - bundle _4.0.20_ install
     - find lib spec -name "*.rb" -print0 | xargs -0 -n1 ruby -c
     - bundle _4.0.20_ exec rspec
+
+ruby_types:
+  stage: verify
+  image: ruby:4.0.10-trixie
+  script:
+    - gem install bundler -v 4.0.20 --no-document
+    - bundle _4.0.20_ install
+    - bundle _4.0.20_ exec rbs validate
+    - bundle _4.0.20_ exec steep check
+    - gem build diesl.gemspec
+    - ruby -rrubygems/package -e 'files = Gem::Package.new(Dir["diesl-*.gem"].fetch(0)).spec.files; abort "Diesl gem is missing RBS signatures" unless files.include?("sig/diesl/source.rbs") && files.include?("sig/diesl/editor.rbs")'
