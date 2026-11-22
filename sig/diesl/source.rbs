@@ -1,0 +1,33 @@
+module Diesl
+  class Conflict < StandardError
+  end
+  class UnsafeEdit < StandardError
+  end
+  class InvalidSource < StandardError
+  end
+
+  class Source
+    attr_reader text: String
+    attr_reader parse_result: Prism::ParseResult
+    def initialize: (String text) -> void
+    def revision: () -> String
+    def valid?: () -> bool
+    def errors: () -> Array[String]
+    def nodes: (?within: Prism::Node?, ?prune: ^(Prism::Node) -> bool) -> Array[Prism::Node]
+    def root_calls: (?name: Symbol | String | Array[Symbol | String]?) -> Array[Prism::CallNode]
+    def block_calls: (container: Prism::CallNode?, ?name: Symbol | String | Array[Symbol | String]?) -> Array[Prism::CallNode]
+    def calls: (?name: Symbol | String | Array[Symbol | String]?, ?within: Prism::Node?) -> Array[Prism::CallNode]
+    def direct_calls: (within: Prism::Node?, ?name: Symbol | String | Array[Symbol | String]?) -> Array[Prism::CallNode]
+    def keyword_elements: (Prism::CallNode call) -> Array[Prism::AssocNode | Prism::AssocSplatNode]
+    def keyword_name: (Prism::AssocNode element) -> Symbol
+    def keyword_values: (Prism::CallNode call, ?dynamic: untyped) -> Hash[Symbol, untyped]
+    def literal: (Prism::Node? node) -> untyped
+    def line_start: (Integer byte_offset) -> Integer
+    def line_range: (Integer start_byte, Integer end_byte) -> [Integer, Integer]
+    def replace_literal: (Prism::Node node, untyped value, expected_revision: String) -> String
+    def replace: (Integer start_byte, Integer end_byte, String replacement, expected_revision: String) -> String
+    def encode: (untyped value) -> String
+    private
+    def walk: (Prism::Node? node, ?Array[Prism::Node] found, ?^(Prism::Node) -> bool prune) -> Array[Prism::Node]
+  end
+end
