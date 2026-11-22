@@ -1,0 +1,17 @@
+module Diesl
+  class History
+    class Entry
+      attr_accessor before: String
+      attr_accessor after: String
+      attr_accessor label: String
+      def self.new: (before: String, after: String, label: String) -> Entry
+    end
+    attr_reader undo_entries: Array[Entry]
+    attr_reader redo_entries: Array[Entry]
+    def initialize: () -> void
+    def record: (String before, String after, label: String, ?coalesce: bool) -> bool
+    def undo: (String current) -> String
+    def redo: (String current) -> String
+    def reset: () -> Array[Entry]
+  end
+end
