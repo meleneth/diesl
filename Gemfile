@@ -8,4 +8,4 @@ gem "rspec", "~> 3.13"
 gem "rbs"
 gem "steep"
 
-gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "3f64fcd939db0b385f057c077348ae44c4db3558"
+gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "415f6cb55c50cd872b6b112eb5eccd226d0d629d"
