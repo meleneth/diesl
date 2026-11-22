@@ -86,9 +86,13 @@ function makeGit(fs) {
     async statusMatrix({dir}) {
       const revisions = repo(dir);
       const head = revisions[revisions.length - 1];
-      const files = tracked.get(dir);
-      return [...files].map(filepath => [filepath, head?.files?.has(filepath) ? 1 : 0, 2,
-        head?.files?.has(filepath) ? 1 : 2]);
+      return [...tracked.get(dir)].map(filepath => {
+        const previous = head?.files?.get(filepath);
+        const current = fs.lookup(dir + "/" + filepath);
+        const unchanged = previous && previous.length === current.length &&
+          previous.every((byte, index) => byte === current[index]);
+        return [filepath, previous ? 1 : 0, unchanged ? 1 : 2, unchanged ? 1 : 2];
+      });
     },
     async commit({dir, message}) {
       const revisions = repo(dir);
@@ -99,7 +103,8 @@ function makeGit(fs) {
       return oid;
     },
     async log({dir}) {
-      return [...repo(dir)].reverse().map(item => ({oid: item.oid, commit: {message: item.message}}));
+      const revisions = repositories.get(dir) || repositories.get(dir + "-next") || repo(dir);
+      return [...revisions].reverse().map(item => ({oid: item.oid, commit: {message: item.message}}));
     },
     async checkout({dir, ref}) {
       const revision = repo(dir).find(item => item.oid === ref);
