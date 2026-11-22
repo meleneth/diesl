@@ -24,6 +24,23 @@ puts updated # config "new", enabled: true
 
 Run `bundle install && bundle exec rspec spec` with Ruby 4.0.10.
 
+## Static types and CI
+
+Diesl ships its own RBS contracts in `sig/diesl/`. These are included in the
+built gem, so consumers can load them with `library "diesl"` in Steep.
+The AST types come from Prism's own RBS, loaded with `library "prism"`.
+Do not copy either gem's signatures into a consuming application.
+
+The internal GitLab pipeline runs Ruby 4.0.10 on Debian Trixie. In addition
+to RSpec and Ruby syntax checks, the `ruby_types` job runs:
+
+```sh
+bundle exec rbs validate
+bundle exec steep check
+```
+
+It also builds the gem and checks that the packaged artifact contains its RBS.
+
 ## Extraction boundaries
 
 - Generic: Prism parsing, literal discovery, precise byte ranges, Ruby literal serialization, revision-guarded transactions, structured undo/redo.
