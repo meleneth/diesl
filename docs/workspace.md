@@ -45,21 +45,12 @@ Implemented:
 - Path validation and failure reporting on storage and Git operations.
 - Node tests using fake filesystem/Git collaborators, run during Docker build.
 
-The separate `browser/public/workspace-history.js` module now supplies
-the reusable Git features needed by richer consumers:
-
-- `createWorkspaceHistory` accepts domain-defined generation phases containing
-  commit messages and binary Base64 file deltas. It checks paths, commits each
-  phase into an independent Git repository, prepares both generated trees,
-  publishes them with rollback, and exports the original Git objects.
-- `createWorkspaceRevision` restores a selected commit only if the working
-  tree is clean, calls the domain's validation callback, updates the last-valid
-  snapshot, and rolls back a rejected checkout.
-- `browser/public/git-capability.js` owns the low-level byte-accurate Git
-  checkpoint primitive. Neither module assumes a Mobilis DSL or DOM UI.
-- `browser/test/workspace-history.test.mjs` exercises phase history, export,
-  invalid paths, mirror publication failure, dirty-tree protection, and
-  rejected source restoration using a deterministic filesystem/Git double.
+Generic Git checkpoints, generated project history, export, and guarded
+revision restoration now belong to **Carbn**, not Diesl. Consumers use
+`Carbn/browser/git-capability.js` and `Carbn/browser/workspace-history.js`
+for those operations. Diesl retains only declarative source/workspace policy
+and editing semantics. The default Diesl browser demo still has its own
+workspace adapter, pending replacement with the reusable Carbn integration.
 
 The default Diesl browser demo has no generation history or restore controls;
 applications opt into these capabilities and supply their own validation and
