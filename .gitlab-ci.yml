@@ -1,0 +1,16 @@
+# Internal GitLab runner only. No GitHub Actions.
+stages:
+  - verify
+
+default:
+  tags:
+    - docker
+
+ruby_diesl:
+  stage: verify
+  image: ruby:4.0.10-trixie
+  script:
+    - gem install bundler -v 4.0.20 --no-document
+    - bundle _4.0.20_ install
+    - find lib spec -name "*.rb" -print0 | xargs -0 -n1 ruby -c
+    - bundle _4.0.20_ exec rspec
