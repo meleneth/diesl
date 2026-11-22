@@ -155,6 +155,30 @@ test("bad second phase does not replace previous generated project or mirrored a
   assert.equal(history.ready, false);
 });
 
+test("mirror publish failure restores both the previous generated repository and working tree", async () => {
+  const fs = new MemoryFS();
+  const git = makeGit(fs);
+  const history = createWorkspaceHistory({fs, git, author, root: "/workspace"});
+  await history.publish([phase("initial", {"keep.txt": "original"}), phase("phase2", {"other.txt": "present"})]);
+  const rename = fs.promises.rename;
+  let injected = false;
+  fs.promises.rename = async (from, to) => {
+    if (from === "/workspace/.diesl/generated-next" && to === "/workspace/generate" && !injected) {
+      injected = true;
+      throw new Error("simulated mirror rename failure");
+    }
+    return rename(from, to);
+  };
+  await assert.rejects(history.publish([
+    phase("replacement", {"replace.txt": "new"}),
+    phase("more", {"last.txt": "newer"})
+  ]), /simulated mirror rename failure/);
+  assert.equal(fs.text("/generated-project/keep.txt"), "original");
+  assert.equal(fs.text("/workspace/generate/keep.txt"), "original");
+  assert.equal(fs.nodes.has("/generated-project/replace.txt"), false);
+  assert.equal(fs.nodes.has("/workspace/generate/replace.txt"), false);
+});
+
 test("restoration rejects dirty trees and rolls back rejected domain source", async () => {
   const fs = new MemoryFS();
   const git = makeGit(fs);
