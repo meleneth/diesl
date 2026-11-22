@@ -112,6 +112,8 @@ module Diesl
       raise UnsafeEdit, "Invalid source byte offset" unless byte_offset.is_a?(Integer) &&
         byte_offset >= 0 && byte_offset <= text.bytesize
 
+      return 0 if byte_offset.zero?
+
       prior_newline = text.b.rindex("\n", byte_offset - 1)
       prior_newline ? prior_newline + 1 : 0
     end
