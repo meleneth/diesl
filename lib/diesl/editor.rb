@@ -3,7 +3,7 @@
 module Diesl
   # Declarative editor schema. No application DSL is executed.
   class Editor
-    Field = Data.define(:name, :type, :required, :options)
+    Field = Data.define(:name, :type, :required, :options, :default)
     Entity = Data.define(:name, :label, :fields, :creatable)
     Record = Data.define(:id, :entity, :values, :editable)
 
@@ -15,11 +15,11 @@ module Diesl
         @fields = []
       end
 
-      def field(name, type:, required: false, options: nil)
+      def field(name, type:, required: false, options: nil, default: nil)
         kind = type.to_sym
         raise ArgumentError, "Unsupported field type: #{kind}" unless %i[string integer boolean symbol strings].include?(kind)
         raise ArgumentError, "Duplicate field: #{name}" if @fields.any? { |field| field.name == name.to_sym }
-        @fields << Field.new(name: name.to_sym, type: kind, required:, options: options&.freeze)
+        @fields << Field.new(name: name.to_sym, type: kind, required:, options: options&.freeze, default: default.is_a?(Array) ? default.dup.freeze : default)
       end
 
       def build
@@ -103,13 +103,13 @@ module Diesl
       raise UnsafeEdit, "Container end must occupy its own line" unless indentation.match?(/\A[ \t]*\z/)
       values = schema.fields.filter_map do |field|
         next if field.name == :name
-        default = case field.type
+        default = field.default.nil? ? case field.type
                   when :string then ""
                   when :integer then 0
                   when :boolean then false
                   when :symbol then :unset
                   when :strings then []
-                  end
+                  end : field.default
         "#{field.name}: #{document.encode(default)}"
       end
       line = "#{indentation}  #{schema.name} #{document.encode(name)}"
