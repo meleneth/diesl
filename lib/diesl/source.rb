@@ -35,8 +35,14 @@ module Diesl
     # Traverse any Prism subtree in source order. Returning the nodes rather
     # than exposing a private recursive visitor allows domain adapters to
     # classify declarations without implementing their own tree traversal.
-    def nodes(within: parse_result.value)
-      walk(within)
+    def nodes(within: parse_result.value, prune: nil)
+      walk(within, [], prune)
+    end
+
+    # A DSL block is a lexical scope. Select *only* direct calls, never calls
+    # inside another declaration's nested block.
+    def block_calls(container:, name: nil)
+      direct_calls(within: container&.block, name:)
     end
 
     def calls(name: nil, within: parse_result.value)
@@ -138,11 +144,12 @@ module Diesl
 
     private
 
-    def walk(node, found = [])
+    def walk(node, found = [], prune = nil)
       return found unless node
+      return found if prune&.call(node)
 
       found << node
-      node.compact_child_nodes.each { |child| walk(child, found) }
+      node.compact_child_nodes.each { |child| walk(child, found, prune) }
       found
     end
   end
