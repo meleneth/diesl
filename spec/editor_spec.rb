@@ -32,6 +32,27 @@ RSpec.describe Diesl::Editor do
     expect(updated).to eq(text.sub("crew: 4", "crew: 6"))
   end
 
+  it "declares, edits, and validates string collection fields" do
+    collection_editor = described_class.define do
+      entity :warehouse do
+        field :name, type: :string
+        field :buckets, type: :strings
+      end
+    end
+    original = 'warehouse "Tycho", buckets: ["ice", "water"]'
+    record = collection_editor.inspect(original).first
+    expect(record.values[:buckets]).to eq(["ice", "water"])
+    changed = collection_editor.update(original, entity: :warehouse,
+      id: record.id, field: :buckets, value: ["fuel", "medical"],
+      expected_revision: Diesl::Source.new(original).revision)
+    expect(changed).to eq('warehouse "Tycho", buckets: ["fuel", "medical"]')
+    expect do
+      collection_editor.update(original, entity: :warehouse, id: record.id,
+        field: :buckets, value: ["fuel", 23],
+        expected_revision: Diesl::Source.new(original).revision)
+    end.to raise_error(ArgumentError, /array of strings/)
+  end
+
   it "rejects wrong field types and stale source" do
     record = editor.inspect(text).first
     revision = Diesl::Source.new(text).revision
