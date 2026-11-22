@@ -17,7 +17,7 @@ module Diesl
 
       def field(name, type:, required: false, options: nil)
         kind = type.to_sym
-        raise ArgumentError, "Unsupported field type: #{kind}" unless %i[string integer boolean symbol].include?(kind)
+        raise ArgumentError, "Unsupported field type: #{kind}" unless %i[string integer boolean symbol strings].include?(kind)
         raise ArgumentError, "Duplicate field: #{name}" if @fields.any? { |field| field.name == name.to_sym }
         @fields << Field.new(name: name.to_sym, type: kind, required:, options: options&.freeze)
       end
@@ -108,6 +108,7 @@ module Diesl
                   when :integer then 0
                   when :boolean then false
                   when :symbol then :unset
+                  when :strings then []
                   end
         "#{field.name}: #{document.encode(default)}"
       end
@@ -198,9 +199,10 @@ module Diesl
     private
 
     def validate_value(field, value)
-      klass = {string: String, integer: Integer, boolean: [TrueClass, FalseClass], symbol: Symbol}.fetch(field.type)
+      klass = {string: String, integer: Integer, boolean: [TrueClass, FalseClass], symbol: Symbol, strings: Array}.fetch(field.type)
       raise ArgumentError, "Invalid #{field.name}: expected #{field.type}" unless Array(klass).any? { |k| value.is_a?(k) }
       raise ArgumentError, "#{field.name} cannot be empty" if field.required && value.respond_to?(:empty?) && value.empty?
+      raise ArgumentError, "Invalid #{field.name}: expected an array of strings" if field.type == :strings && !value.all? { |item| item.is_a?(String) }
       raise ArgumentError, "Invalid #{field.name}: not in allowed options" if field.options && !field.options.include?(value)
     end
   end
