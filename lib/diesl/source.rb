@@ -39,6 +39,12 @@ module Diesl
       walk(within, [], prune)
     end
 
+    # Top-level entrypoints have different scope from calls nested in arbitrary
+    # Ruby code; keep that distinction in the reusable AST traversal.
+    def root_calls(name: nil)
+      direct_calls(within: parse_result.value.statements, name:)
+    end
+
     # A DSL block is a lexical scope. Select *only* direct calls, never calls
     # inside another declaration's nested block.
     def block_calls(container:, name: nil)
