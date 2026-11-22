@@ -10,6 +10,28 @@ RSpec.describe Diesl::Source do
     expect(source.valid?).to be(true)
   end
 
+  it "traverses nested calls without mistaking nested declarations for direct block statements" do
+    document = described_class.new(<<~RUBY)
+      fleet do
+        ship "Rocinante", crew: 4, tags: ["ice", "belt"]
+        group do
+          ship "Nested"
+        end
+      end
+    RUBY
+    root = document.calls(name: :fleet).first
+    expect(document.calls(name: :ship, within: root.block).length).to eq(2)
+    expect(document.direct_calls(within: root.block, name: :ship).length).to eq(1)
+    ship = document.direct_calls(within: root.block, name: :ship).first
+    expect(document.keyword_values(ship)).to eq(crew: 4, tags: ["ice", "belt"])
+    expect(document.keyword_elements(ship).map { |entry| document.keyword_name(entry) }).to eq(%i[crew tags])
+  end
+
+  it "marks dynamic keywords without executing them" do
+    document = described_class.new('ship "Rocinante", crew: compute()')
+    expect(document.keyword_values(document.calls(name: :ship).first)).to eq(crew: :dynamic)
+  end
+
   it "preserves surrounding source exactly when changing a literal" do
     node = source.calls(name: :config).first.arguments.arguments.first
     expect(source.replace_literal(node, "new", expected_revision: source.revision))
