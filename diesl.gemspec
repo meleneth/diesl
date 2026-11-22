@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Conservative source editing primitives for Ruby DSLs"
   spec.authors = ["Diesl contributors"]
   spec.required_ruby_version = "= 4.0.10"
-  spec.files = Dir["lib/**/*.rb", "README.md"]
+  spec.files = Dir["lib/**/*.rb", "sig/**/*.rbs", "README.md"]
   spec.require_paths = ["lib"]
   spec.add_dependency "prism", ">= 1.0"
 end
