@@ -10,6 +10,16 @@ RSpec.describe Diesl::Source do
     expect(source.valid?).to be(true)
   end
 
+  it "only exposes root DSL entrypoints, not nested calls with the same method" do
+    document = described_class.new(<<~RUBY)
+      Mobilis::DSL.build("outer") do
+        helper = build("inner")
+      end
+    RUBY
+    expect(document.root_calls(name: :build).length).to eq(1)
+    expect(document.calls(name: :build).length).to eq(2)
+  end
+
   it "traverses nested calls without mistaking nested declarations for direct block statements" do
     document = described_class.new(<<~RUBY)
       fleet do
