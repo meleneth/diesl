@@ -72,7 +72,8 @@ function makeGit(fs) {
       if (!fs.nodes.has(dir)) fs.nodes.set(dir, null);
       fs.nodes.set(dir + "/.git", null);
       fs.nodes.set(dir + "/.git/HEAD", new TextEncoder().encode("ref: refs/heads/main\n"));
-      repo(dir);
+      repositories.set(dir, []);
+      tracked.set(dir, new Set());
     },
     async isIgnored() { return false; },
     async add({dir, filepath}) { repo(dir); tracked.get(dir).add(filepath); },
