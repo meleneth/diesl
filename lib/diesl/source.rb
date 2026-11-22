@@ -32,10 +32,51 @@ module Diesl
       end
     end
 
-    def calls(name: nil)
+    # Traverse any Prism subtree in source order. Returning the nodes rather
+    # than exposing a private recursive visitor allows domain adapters to
+    # classify declarations without implementing their own tree traversal.
+    def nodes(within: parse_result.value)
+      walk(within)
+    end
+
+    def calls(name: nil, within: parse_result.value)
       names = name && Array(name).map(&:to_sym)
-      walk(parse_result.value).select do |node|
+      nodes(within:).select do |node|
         node.is_a?(Prism::CallNode) && (names.nil? || names.include?(node.name))
+      end
+    end
+
+    # Direct statements in a block, unlike #calls, never return nested calls.
+    # This matters for DSLs whose inner blocks have different semantics.
+    def direct_calls(within:, name: nil)
+      names = name && Array(name).map(&:to_sym)
+      statements = within.is_a?(Prism::BlockNode) ? within.body : within
+      return [] unless statements.is_a?(Prism::StatementsNode)
+
+      statements.body.select do |node|
+        node.is_a?(Prism::CallNode) && (names.nil? || names.include?(node.name))
+      end
+    end
+
+    def keyword_elements(call)
+      keyword = call.arguments&.arguments&.find { |arg| arg.is_a?(Prism::KeywordHashNode) }
+      keyword ? keyword.elements : []
+    end
+
+    def keyword_name(element)
+      key = element.key
+      raw = key.respond_to?(:value) ? key.value : key.slice.delete_suffix(":")
+      raw.to_sym
+    end
+
+    def keyword_values(call, dynamic: :dynamic)
+      keyword_elements(call).to_h do |element|
+        value = begin
+          literal(element.value)
+        rescue UnsafeEdit
+          dynamic
+        end
+        [keyword_name(element), value]
       end
     end
 
