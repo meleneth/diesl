@@ -1,0 +1,33 @@
+module Diesl
+  class Session
+    class Update
+      attr_reader revision: String
+      attr_reader source: String
+      attr_reader records: Array[Editor::Record]
+      attr_reader changed: bool
+      attr_reader refresh: Array[Symbol]
+      def self.new: (revision: String, source: String, records: Array[Editor::Record], changed: bool, refresh: Array[Symbol]) -> Update
+    end
+
+    attr_reader schema: Editor
+    attr_reader source: String
+    attr_reader history: History
+    attr_reader draft_source: String
+    attr_reader draft_error: String?
+    def initialize: (schema: Editor, source: String) -> void
+    def revision: () -> String
+    def records: () -> Array[Editor::Record]
+    def draft_valid?: () -> bool
+    def type_source: (String text, expected_revision: String) -> Update
+    def end_source_edit: () -> bool
+    def change: (entity: Symbol | String, id: String, field: Symbol | String, value: untyped, expected_revision: String) -> Update
+    def create: (entity: Symbol | String, name: String, expected_revision: String) -> Update
+    def remove: (entity: Symbol | String, id: String, expected_revision: String) -> Update
+    def undo: () -> Update
+    def redo: () -> Update
+    private
+    def transition: (String source, label: String) -> Update
+    def transition_without_record: (String source) -> Update
+    def update: (changed: bool) -> Update
+  end
+end
