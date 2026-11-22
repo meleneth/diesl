@@ -6,4 +6,4 @@ ruby "4.0.10"
 gemspec
 gem "rspec", "~> 3.13"
 
-gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "467477e2e0d78e65e82ebc855a69f860f186621e"
+gem "carbn", git: "https://github.com/meleneth/carbn.git", ref: "2425bdfc2b0611ccc0a1a2cb55a2fbb655a170bb"
