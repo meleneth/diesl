@@ -179,6 +179,32 @@ test("mirror publish failure restores both the previous generated repository and
   assert.equal(fs.nodes.has("/workspace/generate/replace.txt"), false);
 });
 
+test("failed last-valid snapshot writes roll back both the Git source and saved snapshot", async () => {
+  const fs = new MemoryFS();
+  const git = makeGit(fs);
+  await git.init({dir: "/workspace"});
+  fs.nodes.set("/workspace/mobilis.rb", new TextEncoder().encode("older"));
+  await git.add({dir: "/workspace", filepath: "mobilis.rb"});
+  const target = await git.commit({dir: "/workspace", message: "older"});
+  fs.nodes.set("/workspace/mobilis.rb", new TextEncoder().encode("current"));
+  await git.commit({dir: "/workspace", message: "current"});
+  fs.nodes.set("/workspace/.diesl/last-valid.rb", new TextEncoder().encode("last known good"));
+  const writeFile = fs.promises.writeFile;
+  let failed = false;
+  fs.promises.writeFile = async (path, bytes) => {
+    if (path === "/workspace/.diesl/last-valid.rb" && !failed) {
+      failed = true;
+      throw new Error("simulated snapshot write failure");
+    }
+    return writeFile(path, bytes);
+  };
+  const revision = createWorkspaceRevision({fs, git, root: "/workspace",
+    sourcePath: "mobilis.rb", lastValidPath: ".diesl/last-valid.rb"});
+  await assert.rejects(revision.restore(target, {validate: () => {}}), /rolled back: simulated snapshot write failure/);
+  assert.equal(fs.text("/workspace/mobilis.rb"), "current");
+  assert.equal(fs.text("/workspace/.diesl/last-valid.rb"), "last known good");
+});
+
 test("restoration rejects dirty trees and rolls back rejected domain source", async () => {
   const fs = new MemoryFS();
   const git = makeGit(fs);
