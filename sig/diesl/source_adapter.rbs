@@ -1,0 +1,32 @@
+module Diesl
+  class SourceAdapter
+    attr_reader document_class: untyped
+    attr_reader operations: Hash[Symbol, Symbol]
+    def initialize: (document_class: untyped, operations: Hash[Symbol | String, Symbol | String]) -> void
+    def revision: (String source) -> String
+    def analyze: (String source) -> untyped
+    def validate!: (String source) -> untyped
+    def apply: (String source, operation: Symbol | String, expected_revision: String, **untyped arguments) -> String
+    def session: (source: String) -> AdaptedSession
+  end
+
+  class AdaptedSession
+    attr_reader adapter: SourceAdapter
+    attr_reader source: String
+    attr_reader draft_source: String
+    attr_reader draft_error: String?
+    attr_reader history: History
+    def initialize: (adapter: SourceAdapter, source: String) -> void
+    def revision: () -> String
+    def analysis: () -> untyped
+    def draft_valid?: () -> bool
+    def type_source: (String text, expected_revision: String) -> bool
+    def end_source_edit: () -> bool
+    def apply: (operation: Symbol | String, expected_revision: String, ?label: String?, **untyped arguments) -> bool
+    def undo: () -> bool
+    def redo: () -> bool
+    private
+    def guard!: (String expected_revision) -> void
+    def publish: (String source) -> untyped
+  end
+end
