@@ -52,6 +52,19 @@ RSpec.describe Diesl::Source do
     expect(document.keyword_values(document.calls(name: :ship).first)).to eq(crew: :dynamic)
   end
 
+  it "finds entire edit lines in Prism byte coordinates even after multibyte comments" do
+    text = "# 🪐 header\nship(\"mémoire\") # trailing\n"
+    document = described_class.new(text)
+    call = document.calls(name: :ship).first
+    start_byte = call.location.start_offset
+    end_byte = call.location.end_offset
+    expect(document.line_start(0)).to eq(0)
+    expect(document.line_start(start_byte)).to eq("# 🪐 header\n".bytesize)
+    first, last = document.line_range(start_byte, end_byte)
+    expect(text.b.byteslice(first, last - first).force_encoding("UTF-8"))
+      .to eq("ship(\"mémoire\") # trailing\n")
+  end
+
   it "preserves surrounding source exactly when changing a literal" do
     node = source.calls(name: :config).first.arguments.arguments.first
     expect(source.replace_literal(node, "new", expected_revision: source.revision))
