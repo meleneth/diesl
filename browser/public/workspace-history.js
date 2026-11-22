@@ -154,15 +154,17 @@ export function createWorkspaceRevision({fs, pfs = fs.promises, git, root, sourc
         throw new Error("Commit or discard working-tree changes before restoring a revision.");
       await guard();
       const previous = await git.resolveRef({fs, dir: root, ref: "HEAD"});
-      await git.checkout({fs, dir: root, ref: oid, noUpdateHead: true, force: true, nonBlocking: true});
+      const snapshotPath = root + "/" + lastValidPath;
+      let oldSnapshot = null;
+      try { oldSnapshot = new Uint8Array(await pfs.readFile(snapshotPath)); }
+      catch (error) { if (error.code !== "ENOENT") throw error; }
       try {
+        await git.checkout({fs, dir: root, ref: oid, noUpdateHead: true, force: true, nonBlocking: true});
         const bytes = await pfs.readFile(root + "/" + sourcePath);
         const source = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
         if (!source) throw new Error("The selected revision has empty source");
         await validate(source);
-        const target = root + "/" + lastValidPath;
-        const directory = target.slice(0, target.lastIndexOf("/"));
-        // Existing managed last-valid snapshot normally has this directory.
+        const directory = snapshotPath.slice(0, snapshotPath.lastIndexOf("/"));
         if (directory) {
           const parts = directory.split("/").filter(Boolean);
           let current = "";
@@ -172,12 +174,19 @@ export function createWorkspaceRevision({fs, pfs = fs.promises, git, root, sourc
             catch (error) { if (error.code !== "EEXIST") throw error; }
           }
         }
-        await pfs.writeFile(target, bytes);
+        await pfs.writeFile(snapshotPath, bytes);
+        if (typeof pfs.flush === "function") await pfs.flush();
       } catch (error) {
+        // Restore both worktree and last-valid source, not just Git's files.
         await git.checkout({fs, dir: root, ref: previous, noUpdateHead: true, force: true, nonBlocking: true});
+        if (oldSnapshot) await pfs.writeFile(snapshotPath, oldSnapshot);
+        else {
+          try { await pfs.unlink(snapshotPath); }
+          catch (rollbackError) { if (rollbackError.code !== "ENOENT") throw rollbackError; }
+        }
+        if (typeof pfs.flush === "function") await pfs.flush();
         throw new Error(`Checkout was rolled back: ${error.message || String(error)}`);
       }
-      if (typeof pfs.flush === "function") await pfs.flush();
     }
   };
 }
