@@ -106,6 +106,27 @@ module Diesl
       end
     end
 
+    # Prism offsets are bytes. Handle surrounding lines in the same coordinate
+    # system so Unicode comments and identifiers cannot shift edit ranges.
+    def line_start(byte_offset)
+      raise UnsafeEdit, "Invalid source byte offset" unless byte_offset.is_a?(Integer) &&
+        byte_offset >= 0 && byte_offset <= text.bytesize
+
+      prior_newline = text.b.rindex("\n", byte_offset - 1)
+      prior_newline ? prior_newline + 1 : 0
+    end
+
+    def line_range(start_byte, end_byte)
+      raise UnsafeEdit, "Invalid source byte range" unless start_byte.is_a?(Integer) &&
+        end_byte.is_a?(Integer) && end_byte >= start_byte &&
+        start_byte >= 0 && end_byte <= text.bytesize
+
+      first = line_start(start_byte)
+      newline = text.b.index("\n", end_byte)
+      last = newline ? newline + 1 : text.bytesize
+      [first, last]
+    end
+
     def replace_literal(node, value, expected_revision:)
       literal(node) # refuse dynamic expressions even if replacement itself is safe
       replace(node.location.start_offset, node.location.end_offset, encode(value),
